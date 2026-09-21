@@ -27,10 +27,13 @@ public partial class RestWindow : Window
     public void Update(SessionSnapshot snapshot)
     {
         var locked = snapshot.State == SessionState.MandatoryRestLocked;
-        CountdownText.Text = locked ? MainViewModel.FormatRemaining(snapshot.Remaining) : "Rest complete";
-        CountdownText.FontSize = locked ? 62 : 38;
+        var voluntary = snapshot.State == SessionState.VoluntaryRest;
+        CountdownText.Text = locked
+            ? MainViewModel.FormatRemaining(snapshot.Remaining)
+            : voluntary ? "Take your time" : "Rest complete";
+        CountdownText.FontSize = locked ? 56 : 34;
         LockedText.Visibility = locked ? Visibility.Visible : Visibility.Collapsed;
-        RestedButton.Visibility = snapshot.State == SessionState.MandatoryRestComplete
+        RestedButton.Visibility = snapshot.State is SessionState.MandatoryRestComplete or SessionState.VoluntaryRest
             ? Visibility.Visible
             : Visibility.Collapsed;
     }

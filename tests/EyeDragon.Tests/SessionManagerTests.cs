@@ -146,6 +146,55 @@ public sealed class SessionManagerTests
     }
 
     [Fact]
+    public void WarningDoesNotFireBeforeBoundary()
+    {
+        var (manager, clock) = Create();
+        var warnings = new List<SessionWarning>();
+        manager.WarningRaised += warnings.Add;
+        manager.StartWorking();
+
+        clock.Advance(TimeSpan.FromMinutes(14) + TimeSpan.FromSeconds(59));
+        manager.Tick();
+
+        Assert.Empty(warnings);
+        Assert.False(manager.Snapshot.FiveMinuteWarningRaised);
+    }
+
+    [Fact]
+    public void DisabledWarningsRemainSilent()
+    {
+        var clock = new FakeClock();
+        var options = Options with
+        {
+            FiveMinuteWarningEnabled = false,
+            OneMinuteWarningEnabled = false
+        };
+        var manager = new SessionManager(clock, options);
+        var warnings = new List<SessionWarning>();
+        manager.WarningRaised += warnings.Add;
+        manager.StartWorking();
+
+        clock.Advance(TimeSpan.FromMinutes(19));
+        manager.Tick();
+
+        Assert.Empty(warnings);
+    }
+
+    [Fact]
+    public void NonStrictModeMakesRestImmediatelyCompletable()
+    {
+        var clock = new FakeClock();
+        var manager = new SessionManager(clock, Options with { StrictModeEnabled = false });
+        manager.StartWorking();
+
+        clock.Advance(TimeSpan.FromMinutes(20));
+        manager.Tick();
+
+        Assert.Equal(SessionState.MandatoryRestComplete, manager.State);
+        Assert.True(manager.Snapshot.CanCompleteRest);
+    }
+
+    [Fact]
     public void SuspendPausesWorkingTimeUntilResume()
     {
         var (manager, clock) = Create();

@@ -4,8 +4,8 @@
   "version": "1.0",
   "author": "EyeDragon project — original generated artwork",
   "recommendedScale": 1.0,
-  "defaultWidth": 150,
-  "defaultHeight": 180,
+  "defaultWidth": 300,
+  "defaultHeight": 360,
   "anchorX": 0.5,
   "anchorY": 1.0,
   "animations": {

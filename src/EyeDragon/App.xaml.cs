@@ -19,6 +19,7 @@ public partial class App : System.Windows.Application
     private StartupService? _startupService;
     private LogService? _log;
     private PetService? _petService;
+    private SoundService? _soundService;
     private PetDefinition? _pet;
     private TrayService? _tray;
     private MainWindow? _mainWindow;
@@ -27,6 +28,7 @@ public partial class App : System.Windows.Application
     private SettingsWindow? _settingsWindow;
     private AnimationPreviewWindow? _previewWindow;
     private SessionManager? _session;
+    private Mutex? _singleInstanceMutex;
     private SessionState _lastLoggedState = SessionState.Idle;
     private bool _developmentTimers;
 
@@ -39,10 +41,21 @@ public partial class App : System.Windows.Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        _singleInstanceMutex = new Mutex(initiallyOwned: true, @"Local\EyeDragon.SingleInstance", out var isFirstInstance);
+        if (!isFirstInstance)
+        {
+            _singleInstanceMutex.Dispose();
+            _singleInstanceMutex = null;
+            System.Windows.MessageBox.Show("EyeDragon is already running in the system tray.", "EyeDragon", MessageBoxButton.OK, MessageBoxImage.Information);
+            Shutdown();
+            return;
+        }
+
         _log = new LogService();
         _settingsService = new SettingsService();
         _startupService = new StartupService();
         _petService = new PetService(_log);
+        _soundService = new SoundService();
         Settings = await _settingsService.LoadAsync();
         _developmentTimers = e.Args.Contains("--dev-timers", StringComparer.OrdinalIgnoreCase) ||
             string.Equals(Environment.GetEnvironmentVariable("EYEDRAGON_DEVELOPMENT_TIMERS"), "1", StringComparison.Ordinal);
@@ -73,6 +86,11 @@ public partial class App : System.Windows.Application
         if (!Settings.LaunchMinimized && !e.Args.Contains("--startup", StringComparer.OrdinalIgnoreCase))
         {
             _mainWindow.Show();
+        }
+
+        if (e.Args.Contains("--preview", StringComparer.OrdinalIgnoreCase))
+        {
+            OpenAnimationPreview();
         }
 
         _log.Info($"EyeDragon started{(_developmentTimers ? " with development timers" : string.Empty)}");
@@ -185,6 +203,9 @@ public partial class App : System.Windows.Application
         DispatcherUnhandledException -= App_DispatcherUnhandledException;
         TaskScheduler.UnobservedTaskException -= TaskScheduler_UnobservedTaskException;
         _tray?.Dispose();
+        _soundService?.Dispose();
+        _singleInstanceMutex?.ReleaseMutex();
+        _singleInstanceMutex?.Dispose();
         _overlay?.Close();
         _log?.Info("EyeDragon stopped");
         base.OnExit(e);
@@ -242,7 +263,7 @@ public partial class App : System.Windows.Application
             _sessionTimer.Stop();
         }
 
-        if (snapshot.State is SessionState.MandatoryRestLocked or SessionState.MandatoryRestComplete)
+        if (snapshot.State is SessionState.VoluntaryRest or SessionState.MandatoryRestLocked or SessionState.MandatoryRestComplete)
         {
             ShowOrUpdateRestWindow(snapshot);
         }
@@ -281,7 +302,7 @@ public partial class App : System.Windows.Application
 
         if (Settings.WarningSoundsEnabled)
         {
-            SystemSounds.Asterisk.Play();
+            _soundService?.PlayWarning(Settings.Volume);
         }
     }
 
@@ -294,14 +315,14 @@ public partial class App : System.Windows.Application
 
         if (_restWindow is null)
         {
-            var animation = snapshot.State == SessionState.MandatoryRestLocked ? "resting" : "happy";
+            var animation = snapshot.State == SessionState.MandatoryRestComplete ? "happy" : "resting";
             _restWindow = new RestWindow(_session, _petService.LoadFrame(_pet, animation));
             _restWindow.Update(snapshot);
             _restWindow.Show();
             _restWindow.Activate();
             if (Settings.RestStartSoundEnabled)
             {
-                SystemSounds.Exclamation.Play();
+                _soundService?.PlayRestStart(Settings.Volume);
             }
         }
         else

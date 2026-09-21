@@ -1,5 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using EyeDragon.Core;
 using EyeDragon.Services;
@@ -38,6 +40,7 @@ public partial class AnimationPreviewWindow : Window
 
         _animation = animation;
         _frameIndex = 0;
+        ConfigureMovementPreview();
         ConfigureTimer();
         UpdateFrame();
     }
@@ -76,4 +79,24 @@ public partial class AnimationPreviewWindow : Window
     }
 
     private void UpdateFrame() => PreviewImage.Source = _petService.LoadFrame(_pet, _animation, _frameIndex);
+
+    private void ConfigureMovementPreview()
+    {
+        var transform = PreviewImage.RenderTransform as TranslateTransform ?? new TranslateTransform();
+        PreviewImage.RenderTransform = transform;
+        transform.BeginAnimation(TranslateTransform.XProperty, null);
+        transform.X = 0;
+
+        if (string.Equals(_animation, "walk", StringComparison.OrdinalIgnoreCase))
+        {
+            transform.BeginAnimation(
+                TranslateTransform.XProperty,
+                new DoubleAnimation(-150, 150, TimeSpan.FromSeconds(2.8))
+                {
+                    AutoReverse = true,
+                    RepeatBehavior = RepeatBehavior.Forever,
+                    EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
+                });
+        }
+    }
 }

@@ -23,9 +23,12 @@ public sealed class TrayService : IDisposable
         menu.Items.Add(new ToolStripMenuItem("Animation Preview", null, (_, _) => preview()));
         menu.Items.Add(new ToolStripMenuItem("Exit", null, (_, _) => exit()));
 
+        var applicationIcon = Environment.ProcessPath is { } executable
+            ? Icon.ExtractAssociatedIcon(executable)
+            : null;
         _notifyIcon = new NotifyIcon
         {
-            Icon = SystemIcons.Information,
+            Icon = applicationIcon ?? SystemIcons.Information,
             Text = "EyeDragon",
             ContextMenuStrip = menu,
             Visible = true

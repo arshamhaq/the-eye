@@ -24,6 +24,8 @@ public partial class PetOverlayWindow : Window
     private readonly bool _animationEnabled;
     private string _animation = "idle";
     private int _frameIndex;
+    private double _offscreenLeft;
+    private double _restingLeft;
 
     public PetOverlayWindow(PetService petService, PetDefinition pet, AppSettings settings)
     {
@@ -37,7 +39,7 @@ public partial class PetOverlayWindow : Window
         _animationTimer.Tick += (_, _) => AdvanceFrame();
         _hideTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
         _hideTimer.Tick += (_, _) => BeginExit();
-        _poseTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _poseTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1500) };
         _poseTimer.Tick += (_, _) =>
         {
             _poseTimer.Stop();
@@ -50,9 +52,9 @@ public partial class PetOverlayWindow : Window
         var wasVisible = IsVisible;
         BubbleText.Text = message;
         Bubble.Visibility = Visibility.Visible;
-        PetImage.BeginAnimation(OpacityProperty, null);
-        PetImage.Opacity = 1;
-        PetImage.RenderTransform = new TranslateTransform();
+        BeginAnimation(OpacityProperty, null);
+        BeginAnimation(LeftProperty, null);
+        Opacity = 1;
         if (autoHide && _animationEnabled && _pet.Animations.ContainsKey("walk"))
         {
             StartAnimation("walk");
@@ -63,17 +65,20 @@ public partial class PetOverlayWindow : Window
         {
             StartAnimation(animation);
         }
-        PositionNearTaskbar();
         if (!IsVisible)
         {
             Show();
         }
+        PositionNearTaskbar();
 
-        if ((!wasVisible || autoHide) && PetImage.RenderTransform is TranslateTransform transform)
+        if (!wasVisible || autoHide)
         {
-            transform.BeginAnimation(
-                TranslateTransform.XProperty,
-                new DoubleAnimation(110, 0, TimeSpan.FromMilliseconds(700)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+            BeginAnimation(
+                LeftProperty,
+                new DoubleAnimation(_offscreenLeft, _restingLeft, TimeSpan.FromMilliseconds(autoHide ? 1500 : 700))
+                {
+                    EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+                });
         }
 
         if (autoHide)
@@ -130,20 +135,20 @@ public partial class PetOverlayWindow : Window
         _hideTimer.Stop();
         _animationTimer.Stop();
         _poseTimer.Stop();
-        var transform = PetImage.RenderTransform as TranslateTransform ?? new TranslateTransform();
-        PetImage.RenderTransform = transform;
-        var movement = new DoubleAnimation(0, 110, TimeSpan.FromMilliseconds(600)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn } };
-        var fade = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(600));
+        var movement = new DoubleAnimation(Left, _offscreenLeft, TimeSpan.FromMilliseconds(850)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn } };
+        var fade = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(850));
         fade.Completed += (_, _) => HidePet();
-        transform.BeginAnimation(TranslateTransform.XProperty, movement);
-        PetImage.BeginAnimation(OpacityProperty, fade);
+        BeginAnimation(LeftProperty, movement);
+        BeginAnimation(OpacityProperty, fade);
     }
 
     private void PositionNearTaskbar()
     {
         var screen = Forms.Screen.FromPoint(Forms.Cursor.Position);
         var dpi = VisualTreeHelper.GetDpi(this);
-        Left = screen.WorkingArea.Right / dpi.DpiScaleX - Width - 20;
+        _offscreenLeft = screen.Bounds.Right / dpi.DpiScaleX + 12;
+        _restingLeft = screen.WorkingArea.Right / dpi.DpiScaleX - Width - 20;
+        Left = _restingLeft;
         Top = screen.WorkingArea.Bottom / dpi.DpiScaleY - Height;
     }
 
