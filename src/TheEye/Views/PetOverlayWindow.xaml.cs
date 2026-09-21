@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using TheEye.Core;
 using TheEye.Services;
 using TheEye.ViewModels;
@@ -16,6 +17,9 @@ public partial class PetOverlayWindow : Window
     private readonly AppSettings _settings;
     private readonly TranslateTransform _motion = new();
     private bool _running;
+    private readonly DispatcherTimer _warningTimer = new() { Interval = TimeSpan.FromSeconds(6) };
+    private int _motionGeneration;
+    private bool _finitePass;
     public PetOverlayWindow(PetService petService, PetDefinition pet, AppSettings settings)
     {
         InitializeComponent();
@@ -24,6 +28,12 @@ public partial class PetOverlayWindow : Window
         _settings = settings;
         PetImage.RenderTransform = _motion;
         Bubble.RenderTransform = _motion;
+        _warningTimer.Tick += (_, _) =>
+        {
+            _warningTimer.Stop();
+            if (_settings.AnimationEnabled) Bubble.Visibility = Visibility.Collapsed;
+            else HidePet();
+        };
         Closed += (_, _) => StopMotion();
     }
     public void ShowWorkingCompanion()
@@ -33,12 +43,14 @@ public partial class PetOverlayWindow : Window
     }
     public void ShowWarning(string message, string animation, bool autoHide)
     {
-        EnsureVisible();
+        if (autoHide || _finitePass) StopMotion();
+        EnsureVisible(autoHide);
         BubbleText.Text = message;
         Bubble.Visibility = Visibility.Visible;
+        if (autoHide) _warningTimer.Start();
     }
     public void ShowCountdown(TimeSpan remaining) => ShowWarning(MainViewModel.FormatRemaining(remaining), "countdown", false);
-    private void EnsureVisible()
+    private void EnsureVisible(bool finitePass = false)
     {
         if (_running && IsVisible) return;
         PetImage.Source = _petService.LoadFrame(_pet, "walk")
@@ -47,18 +59,22 @@ public partial class PetOverlayWindow : Window
         PositionAtTaskbar();
         UpdateLayout();
         _running = true;
+        _finitePass = finitePass;
         var travel = Math.Max(0, ActualWidth - PetImage.Width - 48);
         _motion.X = travel;
         _motion.Y = 0;
         Opacity = 1;
         if (!_settings.AnimationEnabled) return;
         var speed = Math.Clamp(_settings.AnimationSpeed, 0.5, 2);
-        _motion.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(travel, 24, TimeSpan.FromSeconds(18 / speed))
+        var movement = new DoubleAnimation(travel, 24, TimeSpan.FromSeconds(18 / speed))
         {
             AutoReverse = true,
-            RepeatBehavior = RepeatBehavior.Forever,
+            RepeatBehavior = finitePass ? new RepeatBehavior(1) : RepeatBehavior.Forever,
             EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut }
-        });
+        };
+        var generation = ++_motionGeneration;
+        if (finitePass) movement.Completed += (_, _) => { if (_motionGeneration == generation) HidePet(); };
+        _motion.BeginAnimation(TranslateTransform.XProperty, movement);
         _motion.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(0, -12, TimeSpan.FromSeconds(2.8 / speed))
         {
             AutoReverse = true,
@@ -71,6 +87,9 @@ public partial class PetOverlayWindow : Window
     public void HidePet() { StopMotion(); Hide(); }
     private void StopMotion()
     {
+        _motionGeneration++;
+        _warningTimer.Stop();
+        _finitePass = false;
         _running = false;
         _motion.BeginAnimation(TranslateTransform.XProperty, null);
         _motion.BeginAnimation(TranslateTransform.YProperty, null);

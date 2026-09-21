@@ -72,7 +72,7 @@ public partial class App : System.Windows.Application
         _session.WarningRaised += OnWarningRaised;
         _sessionTimer.Tick += (_, _) => _session.Tick();
 
-        var mainViewModel = new MainViewModel(_session, _petService.LoadFrame(_pet, "idle"));
+        var mainViewModel = new MainViewModel(_session, _petService.LoadFrame(_pet, "landscape"), _petService.LoadFrame(_pet, "walk"));
         _mainWindow = new MainWindow { DataContext = mainViewModel };
         MainWindow = _mainWindow;
         _overlay = new PetOverlayWindow(_petService, _pet, Settings);
@@ -184,7 +184,8 @@ public partial class App : System.Windows.Application
         _previewOverlay?.HidePet();
         _previewOverlay?.Close();
         _previewOverlay = null;
-        if (_session?.State == SessionState.Working) _overlay?.ShowWorkingCompanion();
+        if (_session?.Snapshot is { State: SessionState.Working, OneMinuteWarningRaised: true } snapshot)
+            _overlay?.ShowCountdown(snapshot.Remaining);
     }
 
     public void ShowRestWindow() => BringRestForward();
@@ -316,7 +317,7 @@ public partial class App : System.Windows.Application
         if (stateChanged && snapshot.State == SessionState.Working)
         {
             StopPreview();
-            _overlay?.ShowWorkingCompanion();
+            _overlay?.HidePet();
         }
 
         if (snapshot.State == SessionState.Working && snapshot.OneMinuteWarningRaised)
@@ -339,7 +340,7 @@ public partial class App : System.Windows.Application
 
         if (warning == SessionWarning.FiveMinutesRemaining)
         {
-            _overlay.ShowWarning(_developmentTimers ? "15 seconds left!" : "5 minutes left!", "warning", autoHide: true);
+            _overlay.ShowWarning(_developmentTimers ? "15 seconds to rest" : "5 min to rest", "warning", autoHide: true);
         }
         else
         {
@@ -401,9 +402,9 @@ public partial class App : System.Windows.Application
         _overlay?.HidePet();
         _overlay?.Close();
         _overlay = new PetOverlayWindow(_petService, _pet, Settings);
-        if (_session?.State == SessionState.Working)
+        if (_session?.Snapshot is { State: SessionState.Working, OneMinuteWarningRaised: true } snapshot)
         {
-            _overlay.ShowWorkingCompanion();
+            _overlay.ShowCountdown(snapshot.Remaining);
         }
     }
 

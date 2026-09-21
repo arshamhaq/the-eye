@@ -10,8 +10,12 @@ Right-click the running taskbar icon to pin it.
 
 ## Use
 
-- Start Working begins a fresh 20-minute session. The companion floats slowly
-  left and right above the taskbar, with a soft fade and vertical bob.
+- Start Working begins a fresh 20-minute session with the companion hidden.
+- At five minutes remaining it shows “5 min to rest” for six seconds, makes
+  one slow left-and-right pass, then hides. The pass takes 36 seconds at
+  default speed and respects the animation-speed slider.
+- At one minute remaining it returns with a live 01:00 to 00:01 countdown;
+  at zero the rest screen replaces it. It stays hidden between these reminders.
 - Preview on taskbar, in Settings or the main window, runs the actual desktop
   animation for 25 seconds without changing the session.
 - Resting Now minimizes the main window and opens an opaque ivory rest scene.
@@ -30,7 +34,9 @@ reconciles on resume. Background applications are unaffected.
 
 ## Artwork and display
 
-Main and rest canvases are opaque 1920 x 1080 PNGs. The sprite is a 1920 x 1080
+The main background uses a generated mountain/pine-forest scene at its native
+1672 x 941 resolution, with the approved sprite layered separately. Rest is
+an opaque 1920 x 1080 PNG. The sprite is a 1920 x 1080
 RGBA PNG with a golden aura. Only transparent padding is cropped at load time;
 source images are never downsampled. Rest fills physical monitor bounds and was
 verified at 1920 x 1080 with 125% Windows scaling. Main is resizable/maximizable.
@@ -51,8 +57,8 @@ dotnet run --project src/TheEye
 powershell -File tools/publish.ps1
 ```
 
-The publisher checks every manifest frame exists, matches its source hash, is
-1920 x 1080, and that the sprite has actual transparent background pixels.
+The publisher checks every manifest frame exists, matches its source hash,
+meets its expected dimensions, and that the sprite has actual transparency.
 
 - `--dev-timers`: 30-second work and 10-second rest.
 - `--preview`: immediate taskbar preview.

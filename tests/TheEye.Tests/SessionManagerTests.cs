@@ -37,6 +37,35 @@ public sealed class SessionManagerTests
     }
 
     [Fact]
+    public void WarningsOnlyAtFiveAndOneMinutesAndCountdownReachesRest()
+    {
+        var (manager, clock) = Create();
+        var warnings = new List<SessionWarning>();
+        manager.WarningRaised += warnings.Add;
+        manager.StartWorking();
+        clock.Advance(TimeSpan.FromMinutes(15) - TimeSpan.FromSeconds(1));
+        manager.Tick();
+        Assert.Empty(warnings);
+        clock.Advance(TimeSpan.FromSeconds(1));
+        manager.Tick();
+        Assert.Equal([SessionWarning.FiveMinutesRemaining], warnings);
+        clock.Advance(TimeSpan.FromMinutes(4) - TimeSpan.FromSeconds(1));
+        manager.Tick();
+        Assert.Single(warnings);
+        clock.Advance(TimeSpan.FromSeconds(1));
+        for (var remaining = 60; remaining > 0; remaining--)
+        {
+            manager.Tick();
+            Assert.Equal(SessionState.Working, manager.State);
+            Assert.Equal(TimeSpan.FromSeconds(remaining), manager.Snapshot.Remaining);
+            clock.Advance(TimeSpan.FromSeconds(1));
+        }
+        Assert.Equal([SessionWarning.FiveMinutesRemaining, SessionWarning.OneMinuteRemaining], warnings);
+        manager.Tick();
+        Assert.Equal(SessionState.MandatoryRestLocked, manager.State);
+    }
+
+    [Fact]
     public void OneMinuteWarningFiresOnceAndSuppressesLateFiveMinuteWarning()
     {
         var (manager, clock) = Create();

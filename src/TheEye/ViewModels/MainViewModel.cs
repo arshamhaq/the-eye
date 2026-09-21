@@ -8,10 +8,11 @@ public sealed class MainViewModel : ObservableObject
 {
     private readonly SessionManager _session;
 
-    public MainViewModel(SessionManager session, BitmapSource? petImage)
+    public MainViewModel(SessionManager session, BitmapSource? petImage, BitmapSource? companionImage)
     {
         _session = session;
         PetImage = petImage;
+        CompanionImage = companionImage;
         StartWorkingCommand = new RelayCommand(() => _session.StartWorking(), () => IsIdle);
         RestingNowCommand = new RelayCommand(() => _session.BeginVoluntaryRest(), () => IsWorking);
         RestedCommand = new RelayCommand(() => _session.CompleteRest(), () => CanCompleteRest);
@@ -21,6 +22,7 @@ public sealed class MainViewModel : ObservableObject
     }
 
     public BitmapSource? PetImage { get; }
+    public BitmapSource? CompanionImage { get; }
 
     public RelayCommand StartWorkingCommand { get; }
 

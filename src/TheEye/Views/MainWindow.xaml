@@ -5,6 +5,11 @@
  WindowStartupLocation="CenterScreen" Background="#F6F5EB">
  <Grid>
   <Image Source="{Binding PetImage}" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality"/>
+  <Viewbox Stretch="Uniform" IsHitTestVisible="False">
+   <Canvas Width="1920" Height="1080">
+    <Image Source="{Binding CompanionImage}" Canvas.Left="1278" Canvas.Top="248" Width="424" Height="515" RenderOptions.BitmapScalingMode="HighQuality"/>
+   </Canvas>
+  </Viewbox>
   <Grid Margin="48,32">
    <Grid.RowDefinitions><RowDefinition Height="60"/><RowDefinition/><RowDefinition Height="46"/></Grid.RowDefinitions>
    <TextBlock Text="TheEye" FontSize="27" FontWeight="Bold" Foreground="#20261D"/>

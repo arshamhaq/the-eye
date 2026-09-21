@@ -13,7 +13,9 @@ foreach ($animation in $manifest.animations.PSObject.Properties) {
         if (!(Test-Path -LiteralPath $path)) { throw "Missing published asset: $frame" }
         $bitmap = [Drawing.Bitmap]::FromFile($path)
         try {
-            if ($bitmap.Width -ne 1920 -or $bitmap.Height -ne 1080) { throw "Wrong resolution: $frame" }
+            if ($frame -like '*mountains.png') {
+                if ($bitmap.Width -lt 1600 -or $bitmap.Height -lt 900) { throw "Wrong landscape resolution: $frame" }
+            } elseif ($bitmap.Width -ne 1920 -or $bitmap.Height -ne 1080) { throw "Wrong resolution: $frame" }
             if ($frame -like '*float.png' -and $bitmap.GetPixel(0,0).A -ne 0) { throw 'Sprite background is not transparent.' }
         } finally { $bitmap.Dispose() }
         $source = Join-Path $root ('src\TheEye\Pets\Triangle\' + $frame)

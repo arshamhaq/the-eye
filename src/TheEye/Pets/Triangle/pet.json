@@ -5,6 +5,7 @@
   "defaultWidth": 225,
   "defaultHeight": 276,
   "animations": {
+    "landscape": { "frames": ["Assets/mountains.png"] },
     "idle": { "frames": ["Assets/main.png"] },
     "walk": { "frames": ["Assets/float.png"], "sourceRect": [748, 282, 424, 515] },
     "warning": { "frames": ["Assets/float.png"], "sourceRect": [748, 282, 424, 515] },
