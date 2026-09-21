@@ -21,9 +21,8 @@ EyeDragon is inspired by the 20-20-20 concept, but it is not medical software an
 
 ## Screenshots
 
-Release screenshots will be added here:
+![EyeDragon main window](docs/screenshots/current-main.png)
 
-- Main idle/working window
 - Taskbar warning and countdown
 - Transparent meditation rest screen
 - Animation preview

@@ -1,5 +1,8 @@
+using System.IO;
 using System.Media;
 using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using EyeDragon.Core;
 using EyeDragon.Services;
@@ -86,6 +89,17 @@ public partial class App : System.Windows.Application
         if (!Settings.LaunchMinimized && !e.Args.Contains("--startup", StringComparer.OrdinalIgnoreCase))
         {
             _mainWindow.Show();
+        }
+
+        var captureArgument = e.Args.FirstOrDefault(argument => argument.StartsWith("--capture-ui=", StringComparison.OrdinalIgnoreCase));
+        if (captureArgument is not null)
+        {
+            var capturePath = captureArgument["--capture-ui=".Length..];
+            _mainWindow.ContentRendered += (_, _) => CaptureMainWindow(capturePath);
+            if (!_mainWindow.IsVisible)
+            {
+                _mainWindow.Show();
+            }
         }
 
         if (e.Args.Contains("--preview", StringComparer.OrdinalIgnoreCase))
@@ -402,5 +416,37 @@ public partial class App : System.Windows.Application
     {
         _log?.Error("Unobserved background exception", e.Exception);
         e.SetObserved();
+    }
+
+    private void CaptureMainWindow(string path)
+    {
+        if (_mainWindow is null || string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        try
+        {
+            var dpi = VisualTreeHelper.GetDpi(_mainWindow);
+            var width = Math.Max(1, (int)Math.Ceiling(_mainWindow.ActualWidth * dpi.DpiScaleX));
+            var height = Math.Max(1, (int)Math.Ceiling(_mainWindow.ActualHeight * dpi.DpiScaleY));
+            var bitmap = new RenderTargetBitmap(width, height, dpi.PixelsPerInchX, dpi.PixelsPerInchY, PixelFormats.Pbgra32);
+            bitmap.Render(_mainWindow);
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(bitmap));
+            var fullPath = Path.GetFullPath(path);
+            Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+            using var stream = File.Create(fullPath);
+            encoder.Save(stream);
+        }
+        catch (Exception ex)
+        {
+            _log?.Error("Could not capture the UI preview", ex);
+        }
+        finally
+        {
+            IsExiting = true;
+            Shutdown();
+        }
     }
 }
