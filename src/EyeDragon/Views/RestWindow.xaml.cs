@@ -22,6 +22,8 @@ public partial class RestWindow : Window
 
     public bool AllowClose { get; set; }
 
+    public void SetPetImage(System.Windows.Media.ImageSource? image) => PetImage.Source = image;
+
     public void Update(SessionSnapshot snapshot)
     {
         var locked = snapshot.State == SessionState.MandatoryRestLocked;

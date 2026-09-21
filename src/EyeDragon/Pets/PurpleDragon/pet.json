@@ -10,11 +10,11 @@
   "anchorY": 1.0,
   "animations": {
     "idle": { "framesPerSecond": 1, "loop": true, "frames": ["Assets/idle.png"] },
-    "walk": { "framesPerSecond": 8, "loop": true, "frames": ["Assets/idle.png"] },
-    "warning": { "framesPerSecond": 1, "loop": true, "frames": ["Assets/idle.png"] },
-    "countdown": { "framesPerSecond": 1, "loop": true, "frames": ["Assets/idle.png"] },
-    "goRest": { "framesPerSecond": 1, "loop": true, "frames": ["Assets/idle.png"] },
-    "resting": { "framesPerSecond": 1, "loop": true, "frames": ["Assets/idle.png"] },
-    "happy": { "framesPerSecond": 1, "loop": true, "frames": ["Assets/idle.png"] }
+    "walk": { "framesPerSecond": 8, "loop": true, "frames": ["Assets/walk_01.png", "Assets/walk_02.png", "Assets/walk_03.png", "Assets/walk_02.png"] },
+    "warning": { "framesPerSecond": 1, "loop": true, "frames": ["Assets/warning.png"] },
+    "countdown": { "framesPerSecond": 1, "loop": true, "frames": ["Assets/countdown.png"] },
+    "goRest": { "framesPerSecond": 1, "loop": true, "frames": ["Assets/go_rest.png"] },
+    "resting": { "framesPerSecond": 1, "loop": true, "frames": ["Assets/resting.png"] },
+    "happy": { "framesPerSecond": 1, "loop": true, "frames": ["Assets/happy.png"] }
   }
 }

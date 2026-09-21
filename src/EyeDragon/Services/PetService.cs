@@ -13,6 +13,7 @@ public sealed class PetService
     };
 
     private readonly LogService _log;
+    private readonly Dictionary<string, BitmapImage> _frameCache = new(StringComparer.OrdinalIgnoreCase);
 
     public PetService(LogService log)
     {
@@ -63,12 +64,18 @@ public sealed class PetService
                 throw new InvalidDataException("Pet frame path escapes the pet package.");
             }
 
+            if (_frameCache.TryGetValue(path, out var cached))
+            {
+                return cached;
+            }
+
             var image = new BitmapImage();
             image.BeginInit();
             image.CacheOption = BitmapCacheOption.OnLoad;
             image.UriSource = new Uri(path, UriKind.Absolute);
             image.EndInit();
             image.Freeze();
+            _frameCache[path] = image;
             return image;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or NotSupportedException)

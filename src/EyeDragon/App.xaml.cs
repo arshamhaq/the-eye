@@ -294,7 +294,7 @@ public partial class App : System.Windows.Application
 
         if (_restWindow is null)
         {
-            var animation = snapshot.State == SessionState.MandatoryRestLocked ? "goRest" : "happy";
+            var animation = snapshot.State == SessionState.MandatoryRestLocked ? "resting" : "happy";
             _restWindow = new RestWindow(_session, _petService.LoadFrame(_pet, animation));
             _restWindow.Update(snapshot);
             _restWindow.Show();
@@ -307,6 +307,10 @@ public partial class App : System.Windows.Application
         else
         {
             _restWindow.Update(snapshot);
+            if (snapshot.State == SessionState.MandatoryRestComplete)
+            {
+                _restWindow.SetPetImage(_petService.LoadFrame(_pet, "happy"));
+            }
         }
     }
 
