@@ -1,0 +1,33 @@
+<Window x:Class="TheEye.Views.MainWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="TheEye" Width="1100" Height="660" MinWidth="800" MinHeight="500"
+ WindowStartupLocation="CenterScreen" Background="#F6F5EB">
+ <Grid>
+  <Image Source="{Binding PetImage}" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality"/>
+  <Grid Margin="48,32">
+   <Grid.RowDefinitions><RowDefinition Height="60"/><RowDefinition/><RowDefinition Height="46"/></Grid.RowDefinitions>
+   <TextBlock Text="TheEye" FontSize="27" FontWeight="Bold" Foreground="#20261D"/>
+   <Button Content="Settings" Command="{Binding OpenSettingsCommand}" HorizontalAlignment="Right" VerticalAlignment="Top" Background="#30392D"/>
+   <StackPanel Grid.Row="1" Width="390" HorizontalAlignment="Left" VerticalAlignment="Center">
+    <StackPanel Visibility="{Binding IdleVisibility}">
+     <TextBlock Text="Keep your focus.&#10;Give your eyes a break." FontSize="36" FontWeight="SemiBold" Foreground="#20261D"/>
+     <TextBlock Text="Your floating companion will keep an eye on the time." TextWrapping="Wrap" Width="320" HorizontalAlignment="Left" FontSize="16" Foreground="#5E6559" Margin="0,20,0,28"/>
+     <Button Content="Start Working" Command="{Binding StartWorkingCommand}" HorizontalAlignment="Left" MinWidth="195"/>
+    </StackPanel>
+    <StackPanel Visibility="{Binding WorkingVisibility}">
+     <TextBlock Text="TIME TO FOCUS" FontSize="12" Foreground="#5E6559"/>
+     <TextBlock Text="{Binding RemainingText}" FontSize="80" FontWeight="Light" Foreground="#20261D" Margin="0,10,0,0"/>
+     <TextBlock Text="{Binding StatusText}" FontSize="18" Foreground="#5E6559" Margin="0,0,0,28"/>
+     <Button Content="Resting Now" Command="{Binding RestingNowCommand}" HorizontalAlignment="Left" MinWidth="195"/>
+    </StackPanel>
+    <StackPanel Visibility="{Binding VoluntaryRestVisibility}">
+     <TextBlock Text="Enjoy your break." FontSize="38" Foreground="#20261D"/>
+     <Button Content="Return to break" Click="ReturnToRest_Click" HorizontalAlignment="Left" Margin="0,24,0,0"/>
+    </StackPanel>
+   </StackPanel>
+   <TextBlock Grid.Row="2" Text="A little focus. A real break." Foreground="#5E6559" FontSize="12" VerticalAlignment="Bottom"/>
+   <Button Grid.Row="2" Content="Preview on taskbar" Click="Preview_Click" HorizontalAlignment="Right" Background="#30392D"/>
+  </Grid>
+ </Grid>
+</Window>

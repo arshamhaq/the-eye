@@ -485,7 +485,8 @@ $RECYCLE.BIN/
 
 # Repository-local SDK used for release validation
 .dotnet-sdk/
+.asset-tools/
 
 # Keep the public, secret-free release profile in source control.
-!src/EyeDragon/Properties/PublishProfiles/
-!src/EyeDragon/Properties/PublishProfiles/win-x64.pubxml
+!src/TheEye/Properties/PublishProfiles/
+!src/TheEye/Properties/PublishProfiles/win-x64.pubxml
