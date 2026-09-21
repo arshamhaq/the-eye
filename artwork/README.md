@@ -1,44 +1,50 @@
 # Artwork provenance and resolution
 
-The supplied character reference is preserved byte-for-byte in
-`originals/triangle-reference.png` (404 x 495 pixels). It depicts the user's
-chosen existing character; it is not original project artwork and is not
-licensed under the code's MIT license.
+## Active high-quality artwork
 
-The built-in image generation service rejected the requested new illustration
-set. No successful high-resolution regenerated character is claimed here.
+The user's two new attachments are preserved unchanged:
 
-`tools/compose_triangle.py` extracts the provided pose and composites it at
-native pixel size. It produces three 1920 x 1080 files in
-`src/TheEye/Pets/Triangle/Assets`: main.png, resting.png, float.png.
-The first two have opaque ivory gradient backgrounds. float.png has real alpha,
-including a soft golden aura. The original image is never downsampled.
-1920 x 1080 describes the canvas; the character still contains only the source
-image's detail. The rest artwork uses the original pose, not a generated
-meditation pose.
+- `originals/triangle-standing-hq.png`: 912 x 1120, standing pose on white.
+- `originals/triangle-meditation-hq.png`: 912 x 1120, meditation on pink/ivory clouds.
 
-The sprite's transparent padding is cropped by the manifest's sourceRect at
-load time, preserving every retained source pixel. UI size and Windows DPI
-scaling affect display only, not source asset resolution.
+These depict the user's chosen existing character; ownership is unchanged and
+the images are not covered by the application's MIT code license.
 
-The mountain background was successfully generated using the built-in tool
-and is saved unchanged at native 1672 x 941 resolution in
-`src/TheEye/Pets/Triangle/Assets/mountains.png`. The main view layers the
-unchanged approved sprite over it; float.png was not edited.
+`tools/compose_triangle.py` performs the explicitly requested deterministic
+segmentation/compositing. It does not ask a generator to redraw the character.
+Run with Python, Pillow, NumPy, OpenCV and SciPy (the local `.asset-tools`
+environment includes them). Outputs in `src/TheEye/Pets/Triangle/Assets`:
 
-Final landscape prompt: layered grayscale mountain peaks and tall pine forest
-silhouettes in pale atmospheric mist; painterly illustration, charcoal/silver
-and ivory fog; light left side for dark UI text, detailed forest on the right;
-no characters, symbols, text or UI; landscape, highest native quality.
+- `float.png`: 912 x 1120 RGBA. Native pixels, no resize or crop. The white eye
+  remains opaque; background becomes transparent. White-matte subtraction on
+  translucent edges retains the golden aura without a baked white fringe.
+- `resting.png`: opaque 2240 x 1260 landscape. The complete meditation source
+  is inserted at (1250,70), unchanged and at 1:1 pixel scale. Only the surrounding
+  background is extended. The script asserts exact equality of the whole insert.
+- `meditation-original.png`: byte-for-byte copy of the meditation attachment.
+- `main.png`: 2240 x 1260 composed mountain scene with the native standing
+  cutout. The mountain background alone is interpolated to fit this canvas;
+  no extra source detail is claimed. The actual main UI instead layers the
+  native mountain background and full-resolution sprite independently.
 
-The requested meditation edit was attempted using the built-in tool with the
-original reference, preserving its 2D style, triangle body, eye, hat, bow tie,
-limbs and glow, changing only to a closed-eye cross-legged levitation pose on
-an ivory background. The service returned output moderation_blocked / other,
-request b7d22d57-8943-4707-8601-08304194dd9b. No specific cause was provided.
-The existing rest image remains in use; no generated meditation image is claimed.
+The main UI displays the character about 1.8 times larger than before. Taskbar
+size and animation timing are unchanged; its aspect ratio now follows the source.
+Only Windows icon derivatives are reduced to required icon sizes. Display/DPI
+scaling never alters the saved artwork. Dark/white alpha-review composites are
+written to `artifacts/artwork-review`.
 
-Attempted built-in prompt set: use the attached yellow triangle identity,
-preserve its eye, brick pattern, hat, bow tie, black limbs and golden glow;
-make a misty forest main illustration, an ivory resting illustration, and one
-transparent floating sprite at the highest native resolution available.
+## Mountain background
+
+`mountains.png` is the previously generated, unchanged native 1672 x 941
+mountain/pine-forest illustration. It was made with the built-in image tool.
+Prompt: layered grayscale mountain peaks and tall pine forest silhouettes in
+pale atmospheric mist; painterly illustration, charcoal/silver and ivory fog;
+light left side for dark UI text, detailed forest on the right; no characters,
+symbols, text or UI; landscape, highest native quality.
+
+## Historical sources
+
+The earlier 404 x 495 reference and its cutout remain under `originals` only as
+historical sources. They are no longer used by any active UI/animation frame.
+Earlier character-generation requests were rejected by the image service;
+the new supplied attachments replace that unsuccessful generation workflow.

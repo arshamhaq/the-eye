@@ -18,7 +18,8 @@ Right-click the running taskbar icon to pin it.
   at zero the rest screen replaces it. It stays hidden between these reminders.
 - Preview on taskbar, in Settings or the main window, runs the actual desktop
   animation for 25 seconds without changing the session.
-- Resting Now minimizes the main window and opens an opaque ivory rest scene.
+- Resting Now minimizes the main window and opens the supplied meditation pose
+  on an opaque ivory/pink cloud scene.
   Voluntary rest can finish immediately.
 - At the work deadline, mandatory rest begins. For two minutes the visible
   Rested button dodges the pointer and rejects clicks, touch and keyboard input.
@@ -34,17 +35,20 @@ reconciles on resume. Background applications are unaffected.
 
 ## Artwork and display
 
-The main background uses a generated mountain/pine-forest scene at its native
-1672 x 941 resolution, with the approved sprite layered separately. Rest is
-an opaque 1920 x 1080 PNG. The sprite is a 1920 x 1080
-RGBA PNG with a golden aura. Only transparent padding is cropped at load time;
-source images are never downsampled. Rest fills physical monitor bounds and was
-verified at 1920 x 1080 with 125% Windows scaling. Main is resizable/maximizable.
+The two new supplied originals are preserved at native 912 x 1120 resolution.
+The standing character is extracted with real alpha, preserving its white eye
+and yellow aura while removing the white matte. No character asset is downsampled.
+The main view layers this larger character over the native 1672 x 941 mountain
+background. Rest uses a 2240 x 1260 landscape containing every original
+meditation pixel unchanged, with the cloud background extended for the text.
+Rest fills physical monitor bounds (including 1920 x 1080 at 125% Windows DPI).
+Display scaling never changes the saved source images.
 
-**Artwork limitation:** the image service rejected regeneration. The character
-is extracted from the supplied 404 x 495 reference, retained at native size on
-larger canvases. These are not newly generated high-detail character images.
-Rest currently retains the supplied pose. See [provenance](artwork/README.md).
+Buttons and the main window have matching golden glows. The outer glow uses
+its own backing shape so image/text rendering stays sharp. Custom titlebar
+controls support minimize, maximize/restore and hiding to the tray; drag the
+titlebar to move the window, or double-click it to maximize/restore.
+See [artwork provenance](artwork/README.md).
 
 ## Build, test and publish
 
@@ -59,6 +63,9 @@ powershell -File tools/publish.ps1
 
 The publisher checks every manifest frame exists, matches its source hash,
 meets its expected dimensions, and that the sprite has actual transparency.
+Artwork regression checks: `python tools/test_triangle_assets.py` (Pillow and
+NumPy required). Rebuild artwork with `python tools/compose_triangle.py`
+(also requires OpenCV and SciPy). The supplied originals are never overwritten.
 
 - `--dev-timers`: 30-second work and 10-second rest.
 - `--preview`: immediate taskbar preview.

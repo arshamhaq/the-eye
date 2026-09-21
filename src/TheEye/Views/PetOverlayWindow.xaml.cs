@@ -105,7 +105,7 @@ public partial class PetOverlayWindow : Window
         var requested = _pet.DefaultHeight * _settings.PetScale;
         var height = Math.Min(requested, screen.WorkingArea.Height / scale * 0.48);
         PetImage.Height = height;
-        PetImage.Width = height * 424 / 515;
+        PetImage.Width = height * PetImage.Source.Width / PetImage.Source.Height;
         Width = screen.WorkingArea.Width / scale;
         Height = height + 80;
         var physicalHeight = (int)Math.Ceiling(Height * scale);

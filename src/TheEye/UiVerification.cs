@@ -25,6 +25,25 @@ public partial class App
             ShowMainWindow();
             await Task.Delay(300);
             Capture(_mainWindow!, Path.Combine(directory, "main.png"));
+            var hero = (System.Windows.Controls.Image)_mainWindow!.FindName("HeroImage");
+            Check(hero.Source is BitmapSource { PixelWidth: 912, PixelHeight: 1120 }, "Main uses the native HQ character, not the old cropped sprite");
+            Check(hero.Width == 780, "Main character is enlarged independently of taskbar size");
+            var halo = (Border)_mainWindow.FindName("WindowHalo");
+            Check(_mainWindow.AllowsTransparency && halo.Effect is System.Windows.Media.Effects.DropShadowEffect { ShadowDepth: 0 }, "Main has a separate golden outer glow");
+            ((Button)_mainWindow.FindName("MaximizeButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            await Task.Delay(150);
+            Check(_mainWindow.WindowState == WindowState.Maximized && halo.Margin.Left == 0, "Custom maximize removes the glow gutter");
+            var mainScreen = System.Windows.Forms.Screen.FromHandle(new System.Windows.Interop.WindowInteropHelper(_mainWindow).Handle);
+            var mainDpi = VisualTreeHelper.GetDpi(_mainWindow);
+            Check(Math.Abs(_mainWindow.ActualWidth * mainDpi.DpiScaleX - mainScreen.WorkingArea.Width) <= 1 &&
+                  Math.Abs(_mainWindow.ActualHeight * mainDpi.DpiScaleY - mainScreen.WorkingArea.Height) <= 1,
+                "Maximized main fits the monitor work area without covering the taskbar");
+            Capture(_mainWindow, Path.Combine(directory, "main-maximized.png"));
+            ((Button)_mainWindow.FindName("MaximizeButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(_mainWindow.WindowState == WindowState.Normal && halo.Margin.Left == 24, "Restore returns the outer glow gutter");
+            ((Button)_mainWindow.FindName("MinimizeButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(_mainWindow.WindowState == WindowState.Minimized, "Custom minimize works");
+            ShowMainWindow();
             foreach (var pair in _pet!.Animations)
                 Check(_petService!.LoadFrame(_pet, pair.Key) is not null, $"Published asset: {pair.Key}");
             OpenSettings();
@@ -41,6 +60,7 @@ public partial class App
             await Task.Delay(400);
             Check(_previewOverlay is { IsVisible: true }, "Preview uses the actual taskbar overlay");
             var image = (System.Windows.Controls.Image)_previewOverlay!.FindName("PetImage");
+            Check(image.Source is BitmapSource { PixelWidth: 912, PixelHeight: 1120 }, "Taskbar loads the entire native HQ sprite without cropping");
             var transform = (TranslateTransform)image.RenderTransform;
             var before = transform.X;
             await Task.Delay(1800);
@@ -60,8 +80,11 @@ public partial class App
             Check(_mainWindow!.WindowState == WindowState.Minimized, "Main window minimizes for rest");
             Check(_restWindow is { IsVisible: true }, "Rest window opens");
             var restImage = (System.Windows.Controls.Image)_restWindow!.FindName("PetImage");
-            Check(restImage.Source is BitmapSource { PixelWidth: 1920, PixelHeight: 1080 }, "Rest loads full 1920x1080 artwork");
+            Check(restImage.Source is BitmapSource { PixelWidth: 2240, PixelHeight: 1260 }, "Rest loads the full-resolution meditation landscape");
             Capture(_restWindow, Path.Combine(directory, "rest.png"));
+            var restCapture = new BitmapImage(new Uri(Path.Combine(directory, "rest.png")));
+            var restScreen = System.Windows.Forms.Screen.FromHandle(new System.Windows.Interop.WindowInteropHelper(_restWindow).Handle);
+            Check(restCapture.PixelWidth == restScreen.Bounds.Width && restCapture.PixelHeight == restScreen.Bounds.Height, "Rest render matches physical display resolution at current Windows DPI");
             _session.CompleteRest();
             Check(_restWindow is null && _session.State == SessionState.Working, "Rested starts a fresh work session");
             _session.Stop();

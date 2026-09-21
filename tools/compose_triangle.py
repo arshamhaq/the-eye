@@ -1,53 +1,97 @@
-"""Composite the supplied reference without downsampling or inventing detail.
+"""Deterministic white-matte extraction of the user-supplied HQ artwork.
 
-The reference is 404x495. Scenes are native 1920x1080; the original character
-pixels are retained 1:1. This is not an AI upscale or a newly generated image.
+Never resize the character sources. Only the separate mountain backdrop is
+enlarged for the optional composed landscape. Runtime layers it separately.
 """
 from pathlib import Path
+import shutil
 import cv2
 import numpy as np
-from PIL import Image, ImageFilter
+from PIL import Image
+from scipy.ndimage import distance_transform_edt
 
 ROOT = Path(__file__).resolve().parents[1]
-source = Image.open(ROOT / 'artwork/originals/triangle-reference.png').convert('RGB')
-rgb = np.array(source)
-h, w = rgb.shape[:2]
-mask = np.zeros((h, w), np.uint8)
-# Preserve the eye, bow, and brick pattern inside the exact body silhouette.
-cv2.fillPoly(mask, [np.array([(63,357),(208,149),(216,144),(222,150),(309,381),(308,393),(299,398),(69,366)])], 255)
-gray = cv2.cvtColor(rgb, cv2.COLOR_RGB2GRAY)
-# The reference's black hat and limbs are spatially isolated from the forest.
-regions = [ [(185,121),(207,125),(226,17),(254,20),(232,130),(257,134),(256,145),(185,133)],
-[(14,281),(38,277),(107,290),(96,309),(34,297),(42,309),(79,331),(78,348),(52,346),(59,332),(26,313)],
-[(283,319),(315,330),(327,321),(326,280),(322,240),(329,228),(340,244),(350,232),(369,229),(370,244),(348,253),(350,322),(341,345),(320,352),(291,343)],
-[(65,388),(87,370),(136,370),(122,388),(92,433),(83,442),(72,435),(61,407)],
-[(150,403),(163,398),(168,427),(203,384),(219,384),(183,447),(174,463),(163,461),(150,438)] ]
-for polygon in regions:
-    region = np.zeros_like(mask)
-    cv2.fillPoly(region,[np.array(polygon)],255)
-    mask[(region > 0) & (gray < 105)] = 255
-mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((3,3),np.uint8))
-# Edge coverage comes from the source; golden aura is a separate translucent
-# layer, removing grayscale forest contamination without a white matte.
-coverage = cv2.GaussianBlur(mask.astype(np.float32)/255,(3,3),0.45)
-glow = np.asarray(Image.fromarray(mask).filter(ImageFilter.GaussianBlur(9))).astype(float)/255
-glow = np.clip(glow*0.78,0,0.85) * (1-coverage)
-alpha = coverage + glow*(1-coverage)
-color = (rgb.astype(float)*coverage[:,:,None] + np.array([255,235,100])*glow[:,:,None]*(1-coverage[:,:,None])) / np.maximum(alpha[:,:,None],0.0001)
-rgba = np.dstack((np.clip(color,0,255),alpha*255)).astype(np.uint8)
-sprite = Image.fromarray(rgba)
-assets = ROOT/'src/TheEye/Pets/Triangle/Assets'
-assets.mkdir(parents=True,exist_ok=True)
-canvas = Image.new('RGBA',(1920,1080))
-canvas.alpha_composite(sprite,(758,292))
-canvas.save(assets/'float.png')
-# Keep all originals. Never resize the source to manufacture resolution.
-for name, upper, lower in [('main',(246,245,235),(214,219,211)),('resting',(255,255,252),(237,233,215))]:
-    yy=np.linspace(0,1,1080)[:,None,None]
-    arr=np.broadcast_to(np.array(upper)*(1-yy)+np.array(lower)*yy,(1080,1920,3)).astype(np.uint8).copy()
-    scene=Image.fromarray(arr).convert('RGBA')
-    scene.alpha_composite(sprite,(1290,260))
-    scene.convert('RGB').save(assets/f'{name}.png')
-sprite.save(ROOT/'artwork/originals/triangle-cutout.png')
-sprite.save(ROOT/'src/TheEye/Assets/TheEye.ico',sizes=[(16,16),(32,32),(48,48),(64,64),(128,128),(256,256)])
-print('Wrote three 1920x1080 composites; reference preserved at native 404x495.')
+ORIGINALS = ROOT / 'artwork/originals'
+ASSETS = ROOT / 'src/TheEye/Pets/Triangle/Assets'
+
+
+def extract_sprite(source):
+    rgb = np.asarray(source.convert('RGB')).astype(np.float64)
+    # Known opaque dark ink / saturated yellow. The white eye is foreground,
+    # unlike the white gaps between limbs. Keep the complete eye inside its ink.
+    core = rgb.min(axis=2) < 125
+    _, regions = cv2.connectedComponents((~core).astype(np.uint8))
+    eye_region = regions[570, 440]
+    assert eye_region != regions[0, 0], 'Eye boundary must be closed.'
+    core |= regions == eye_region
+    core = cv2.erode(core.astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool)
+    distance, nearest = distance_transform_edt(~core, return_indices=True)
+    foreground = rgb[nearest[0], nearest[1]]
+    deficit = 255 - rgb.min(axis=2)
+    # Smooth propagated edge colors to prevent nearest-neighbor Voronoi rays
+    # in the very soft aura. The original solid pixels remain unchanged.
+    foreground_deficit = cv2.GaussianBlur(np.maximum(255 - foreground.min(axis=2), 1), (0, 0), 10)
+    alpha = np.clip(deficit / foreground_deficit, 0, 1)
+    alpha[core] = 1
+    # Remove near-white compression noise, not the golden glow.
+    chroma = rgb.max(axis=2) - rgb.min(axis=2)
+    alpha[(distance > 3) & (chroma < 3)] = 0
+    alpha[alpha < 2 / 255] = 0
+    # Undo the white matte: merely setting alpha leaves white fringes on dark.
+    unmatte = (rgb - 255 * (1 - alpha[..., None])) / np.maximum(alpha[..., None], 1e-8)
+    rgba = np.dstack((np.clip(unmatte, 0, 255), alpha * 255))
+    return Image.fromarray(np.rint(rgba).astype(np.uint8), 'RGBA')
+
+
+def extend_clouds(source):
+    # Native 912x1120 insert on a 2240x1260 (16:9) canvas. No character
+    # downsampling, cropping, generative replacement or eye/pose modification.
+    rgb = np.asarray(source.convert('RGB'))
+    x, y = 1250, 70
+    height, width = rgb.shape[:2]
+    rows = np.clip(np.arange(1260) - y, 0, height - 1)
+    left_edge = rgb[rows, 0].astype(float)
+    weight = np.clip(np.arange(2240) / x, 0, 1)[None, :, None]
+    cream = np.array([255, 251, 235])
+    smooth_edge = cv2.GaussianBlur(left_edge[:, None, :], (1, 0), sigmaX=0, sigmaY=55)
+    # Blend back to the exact edge only near the source, so clouds do not
+    # become long horizontal stripes throughout the text area.
+    cloud_edge = smooth_edge * (1 - weight ** 12) + left_edge[:, None, :] * weight ** 12
+    scene = cream * (1 - weight) + cloud_edge * weight
+    scene[:, x + width:] = rgb[rows, -1, None]
+    scene[:y, x:x + width] = rgb[0]
+    scene[y + height:, x:x + width] = rgb[-1]
+    canvas = Image.fromarray(np.rint(scene).astype(np.uint8))
+    canvas.paste(source.convert('RGB'), (x, y))
+    return canvas
+
+
+def main():
+    standing = Image.open(ORIGINALS / 'triangle-standing-hq.png')
+    meditation = Image.open(ORIGINALS / 'triangle-meditation-hq.png')
+    assert standing.size == meditation.size == (912, 1120)
+    sprite = extract_sprite(standing)
+    sprite.save(ASSETS / 'float.png')
+    shutil.copyfile(ORIGINALS / 'triangle-meditation-hq.png', ASSETS / 'meditation-original.png')
+    extend_clouds(meditation).save(ASSETS / 'resting.png')
+    mountain = Image.open(ASSETS / 'mountains.png').convert('RGBA')
+    mountain = mountain.resize((2240, 1260), Image.Resampling.LANCZOS)
+    mountain.alpha_composite(sprite, (1230, 70))
+    mountain.convert('RGB').save(ASSETS / 'main.png')
+    # Icon sizes are platform-required derivatives, not animation sources.
+    sprite.save(ROOT / 'src/TheEye/Assets/TheEye.ico', sizes=[(16,16),(32,32),(48,48),(64,64),(128,128),(256,256)])
+    preview = ROOT / 'artifacts/artwork-review'
+    preview.mkdir(parents=True, exist_ok=True)
+    for label, color in [('dark', '#141823'), ('white', '#ffffff')]:
+        base = Image.new('RGBA', sprite.size, color)
+        base.alpha_composite(sprite)
+        base.convert('RGB').save(preview / f'sprite-on-{label}.png')
+    assert sprite.getpixel((0, 0))[3] == 0
+    assert sprite.getpixel((440, 570))[3] == 255
+    restored = Image.open(ASSETS / 'resting.png').crop((1250,70,2162,1190))
+    assert np.array_equal(np.array(restored), np.array(meditation.convert('RGB')))
+    print('Native 912x1120 sprite; original meditation preserved 1:1 in 2240x1260 rest scene.')
+
+
+if __name__ == '__main__':
+    main()

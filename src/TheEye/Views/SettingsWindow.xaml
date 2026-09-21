@@ -8,7 +8,7 @@
             <TextBlock Text="Settings" FontSize="30" FontWeight="SemiBold" />
             <TextBlock Text="Timer durations apply to the next session. Appearance updates immediately." TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,26" />
 
-            <TextBlock Text="GENERAL" Foreground="#AD89DA" FontWeight="SemiBold" Margin="0,0,0,12" />
+            <TextBlock Text="GENERAL" Foreground="{StaticResource EyeGlowBrush}" FontWeight="SemiBold" Margin="0,0,0,12" />
             <Grid Margin="0,0,0,10">
                 <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="110" /></Grid.ColumnDefinitions>
                 <TextBlock Text="Work duration (minutes)" VerticalAlignment="Center" />
@@ -23,11 +23,11 @@
             <CheckBox Content="Launch with Windows (always starts idle)" IsChecked="{Binding LaunchWithWindows}" Margin="0,5" />
             <CheckBox Content="Launch minimized to tray" IsChecked="{Binding LaunchMinimized}" Margin="0,5,0,24" />
 
-            <TextBlock Text="WARNINGS" Foreground="#AD89DA" FontWeight="SemiBold" Margin="0,0,0,12" />
+            <TextBlock Text="WARNINGS" Foreground="{StaticResource EyeGlowBrush}" FontWeight="SemiBold" Margin="0,0,0,12" />
             <CheckBox Content="Five-minute warning" IsChecked="{Binding FiveMinuteWarningEnabled}" Margin="0,5" />
             <CheckBox Content="One-minute live countdown" IsChecked="{Binding OneMinuteWarningEnabled}" Margin="0,5,0,24" />
 
-            <TextBlock Text="PET" Foreground="#AD89DA" FontWeight="SemiBold" Margin="0,0,0,12" />
+            <TextBlock Text="PET" Foreground="{StaticResource EyeGlowBrush}" FontWeight="SemiBold" Margin="0,0,0,12" />
             <TextBlock Text="Pet size" />
             <Slider Minimum="0.5" Maximum="2" TickFrequency="0.1" Value="{Binding PetScale}" IsSnapToTickEnabled="True" Margin="0,6,0,10" />
             <CheckBox Content="Animate the floating companion" IsChecked="{Binding AnimationEnabled}" Margin="0,5" />
@@ -35,7 +35,7 @@
             <Slider Minimum="0.5" Maximum="2" TickFrequency="0.1" Value="{Binding AnimationSpeed}" IsSnapToTickEnabled="True" Margin="0,6,0,18" />
             <Button Content="Preview on taskbar (25 seconds)" Click="PreviewButton_Click" Background="#30392D" HorizontalAlignment="Left" />
 
-            <TextBlock Text="SOUND" Foreground="#AD89DA" FontWeight="SemiBold" Margin="0,26,0,12" />
+            <TextBlock Text="SOUND" Foreground="{StaticResource EyeGlowBrush}" FontWeight="SemiBold" Margin="0,26,0,12" />
             <CheckBox Content="Warning sounds" IsChecked="{Binding WarningSoundsEnabled}" Margin="0,5" />
             <CheckBox Content="Rest-start sound" IsChecked="{Binding RestStartSoundEnabled}" Margin="0,5" />
             <TextBlock Text="Volume" Margin="0,10,0,0" />

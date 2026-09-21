@@ -1,15 +1,15 @@
 {
   "id": "Triangle",
   "name": "The Eye",
-  "version": "2.0",
+  "version": "3.0",
   "defaultWidth": 225,
   "defaultHeight": 276,
   "animations": {
     "landscape": { "frames": ["Assets/mountains.png"] },
     "idle": { "frames": ["Assets/main.png"] },
-    "walk": { "frames": ["Assets/float.png"], "sourceRect": [748, 282, 424, 515] },
-    "warning": { "frames": ["Assets/float.png"], "sourceRect": [748, 282, 424, 515] },
-    "countdown": { "frames": ["Assets/float.png"], "sourceRect": [748, 282, 424, 515] },
+    "walk": { "frames": ["Assets/float.png"] },
+    "warning": { "frames": ["Assets/float.png"] },
+    "countdown": { "frames": ["Assets/float.png"] },
     "resting": { "frames": ["Assets/resting.png"] },
     "happy": { "frames": ["Assets/main.png"] }
   }

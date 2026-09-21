@@ -1,23 +1,52 @@
 <Window x:Class="TheEye.Views.MainWindow"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- Title="TheEye" Width="1100" Height="660" MinWidth="800" MinHeight="500"
- WindowStartupLocation="CenterScreen" Background="#F6F5EB">
+ xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+ Title="TheEye" Width="1148" Height="708" MinWidth="900" MinHeight="570"
+ WindowStyle="None" AllowsTransparency="True" ResizeMode="CanResize"
+ WindowStartupLocation="CenterScreen" Background="Transparent">
+ <shell:WindowChrome.WindowChrome>
+  <shell:WindowChrome CaptionHeight="0" ResizeBorderThickness="26" GlassFrameThickness="0" CornerRadius="0"/>
+ </shell:WindowChrome.WindowChrome>
+ <Window.Resources>
+  <Style x:Key="WindowControl" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+   <Setter Property="Width" Value="40"/>
+   <Setter Property="Height" Value="34"/>
+   <Setter Property="Padding" Value="0"/>
+   <Setter Property="Background" Value="#D930392D"/>
+   <Setter Property="Margin" Value="5,0,0,0"/>
+  </Style>
+ </Window.Resources>
  <Grid>
+  <!-- Blur only the backing shape, never the artwork or text. The transparent
+       gutter leaves room for the glow outside the visible window edge. -->
+  <Border x:Name="WindowHalo" Margin="24" Background="#F6F5EB" IsHitTestVisible="False">
+   <Border.Effect><DropShadowEffect Color="{StaticResource EyeGlowColor}" BlurRadius="38" ShadowDepth="0" Opacity="0.95"/></Border.Effect>
+  </Border>
+  <Grid x:Name="WindowSurface" Margin="24" Background="#F6F5EB" ClipToBounds="True">
   <Image Source="{Binding PetImage}" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality"/>
+  <Border IsHitTestVisible="False">
+   <Border.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#65FFFEF3" Offset="0"/><GradientStop Color="#00FFFEF3" Offset="0.63"/></LinearGradientBrush></Border.Background>
+  </Border>
   <Viewbox Stretch="Uniform" IsHitTestVisible="False">
    <Canvas Width="1920" Height="1080">
-    <Image Source="{Binding CompanionImage}" Canvas.Left="1278" Canvas.Top="248" Width="424" Height="515" RenderOptions.BitmapScalingMode="HighQuality"/>
+    <Image x:Name="HeroImage" Source="{Binding CompanionImage}" Canvas.Left="1050" Canvas.Top="60" Width="780" Height="958" RenderOptions.BitmapScalingMode="HighQuality"/>
    </Canvas>
   </Viewbox>
+  <Border Height="72" VerticalAlignment="Top" Background="Transparent" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"/>
   <Grid Margin="48,32">
    <Grid.RowDefinitions><RowDefinition Height="60"/><RowDefinition/><RowDefinition Height="46"/></Grid.RowDefinitions>
-   <TextBlock Text="TheEye" FontSize="27" FontWeight="Bold" Foreground="#20261D"/>
-   <Button Content="Settings" Command="{Binding OpenSettingsCommand}" HorizontalAlignment="Right" VerticalAlignment="Top" Background="#30392D"/>
+   <TextBlock Text="TheEye" FontSize="27" FontWeight="Bold" Foreground="#20261D" HorizontalAlignment="Left" VerticalAlignment="Top" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown"/>
+   <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+    <Button Content="Settings" Command="{Binding OpenSettingsCommand}" Background="#30392D" Margin="0,0,16,0" Padding="18,7" Height="34"/>
+    <Button x:Name="MinimizeButton" Content="&#x2212;" Style="{StaticResource WindowControl}" Click="MinimizeButton_Click" ToolTip="Minimize" AutomationProperties.Name="Minimize"/>
+    <Button x:Name="MaximizeButton" Content="&#x25A1;" Style="{StaticResource WindowControl}" Click="MaximizeButton_Click" ToolTip="Maximize or restore" AutomationProperties.Name="Maximize or restore"/>
+    <Button Content="&#x00D7;" Style="{StaticResource WindowControl}" Click="CloseButton_Click" ToolTip="Hide to tray" AutomationProperties.Name="Hide to tray"/>
+   </StackPanel>
    <StackPanel Grid.Row="1" Width="390" HorizontalAlignment="Left" VerticalAlignment="Center">
     <StackPanel Visibility="{Binding IdleVisibility}">
      <TextBlock Text="Keep your focus.&#10;Give your eyes a break." FontSize="36" FontWeight="SemiBold" Foreground="#20261D"/>
-     <TextBlock Text="Your floating companion will keep an eye on the time." TextWrapping="Wrap" Width="320" HorizontalAlignment="Left" FontSize="16" Foreground="#5E6559" Margin="0,20,0,28"/>
+     <TextBlock Text="A quiet companion. A gentle reminder when it's time to rest." TextWrapping="Wrap" Width="320" HorizontalAlignment="Left" FontSize="16" Foreground="#454D40" Margin="0,20,0,28"/>
      <Button Content="Start Working" Command="{Binding StartWorkingCommand}" HorizontalAlignment="Left" MinWidth="195"/>
     </StackPanel>
     <StackPanel Visibility="{Binding WorkingVisibility}">
@@ -33,6 +62,8 @@
    </StackPanel>
    <TextBlock Grid.Row="2" Text="A little focus. A real break." Foreground="#5E6559" FontSize="12" VerticalAlignment="Bottom"/>
    <Button Grid.Row="2" Content="Preview on taskbar" Click="Preview_Click" HorizontalAlignment="Right" Background="#30392D"/>
+  </Grid>
+  <Border BorderBrush="#D9FFF15A" BorderThickness="1" IsHitTestVisible="False"/>
   </Grid>
  </Grid>
 </Window>
