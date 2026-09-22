@@ -48,6 +48,7 @@
      <TextBlock Text="Keep your focus.&#10;Give your eyes a break." FontSize="36" FontWeight="SemiBold" Foreground="#20261D"/>
      <TextBlock Text="A quiet companion. A gentle reminder when it's time to rest." TextWrapping="Wrap" Width="320" HorizontalAlignment="Left" FontSize="16" Foreground="#454D40" Margin="0,20,0,28"/>
      <Button Content="Start Working" Command="{Binding StartWorkingCommand}" HorizontalAlignment="Left" MinWidth="195"/>
+     <TextBlock Text="Starting commits you until shutdown or an emergency exit. Three emergency tickets per week." TextWrapping="Wrap" Width="320" HorizontalAlignment="Left" FontSize="12" Foreground="#454D40" Margin="0,16,0,0"/>
     </StackPanel>
     <StackPanel Visibility="{Binding WorkingVisibility}">
      <TextBlock Text="TIME TO FOCUS" FontSize="12" Foreground="#5E6559"/>

@@ -20,7 +20,7 @@
                 <TextBox Grid.Column="1" Text="{Binding MandatoryRestMinutes, UpdateSourceTrigger=PropertyChanged}" Padding="8" />
             </Grid>
             <CheckBox Content="Strict mode (prevent ordinary rest-window dismissal)" IsChecked="{Binding StrictModeEnabled}" Margin="0,5" />
-            <CheckBox Content="Launch with Windows (always starts idle)" IsChecked="{Binding LaunchWithWindows}" Margin="0,5" />
+            <CheckBox Content="Launch with Windows (idle after shutdown)" IsChecked="{Binding LaunchWithWindows}" IsEnabled="False" ToolTip="Required for the emergency-ticket commitment system." Margin="0,5" />
             <CheckBox Content="Launch minimized to tray" IsChecked="{Binding LaunchMinimized}" Margin="0,5,0,24" />
 
             <TextBlock Text="WARNINGS" Foreground="{StaticResource EyeGlowBrush}" FontWeight="SemiBold" Margin="0,0,0,12" />

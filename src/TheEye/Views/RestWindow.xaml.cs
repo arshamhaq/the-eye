@@ -21,6 +21,12 @@ public partial class RestWindow : Window
         SizeChanged += (_, _) => { if (IsLoaded) PlaceButton(); };
     }
     public bool AllowClose { get; set; }
+    public void SetEmergencyTickets(int remaining)
+    {
+        EmergencyTicketButton.Content = $"Use emergency ticket ({remaining} left)";
+        EmergencyTicketButton.IsEnabled = remaining > 0;
+    }
+    private void EmergencyTicketButton_Click(object sender, RoutedEventArgs e) => App.CurrentApp.RequestEmergencyExit();
     public void Update(SessionSnapshot snapshot)
     {
         var wasLocked = _locked;

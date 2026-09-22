@@ -26,14 +26,40 @@ Right-click the running taskbar icon to pin it.
   Rested button dodges the pointer and rejects clicks, touch and keyboard input.
   The session state also rejects early completion. After the minimum, it settles
   and clicking it starts a fresh full session.
-- Closing the main window hides it to the tray. Tray Exit intentionally quits.
+- Closing the main window hides it to the tray. Before starting work, tray Exit
+  quits normally. After starting, it becomes **Use emergency ticket**: three
+  exits per local Monday-Sunday week, with confirmation before spending one.
+  Tickets do not accumulate or replenish when the app is reopened.
   Single left-click the tray icon to reopen it; right-click opens its menu.
-  Strict mandatory rest rejects ordinary close, Escape, Alt+F4 and tray Exit.
-  It does not prevent termination through Task Manager.
+- The commitment continues through working, locked rest and completed rest.
+  With no tickets left, ordinary app exit is unavailable until the weekly reset
+  or a PC shutdown/restart. A ticket button is also available on the rest screen.
+- A normal PC shutdown/restart does not spend tickets; TheEye launches idle
+  when Windows next starts. Canceling a shutdown or merely logging off does not
+  release a saved commitment. Launch with Windows remains enabled.
+- If forcibly terminated and reopened during the same boot, TheEye restores
+  the session. Work time advances while closed; a missed work deadline opens a
+  full rest minimum. Time spent with the rest window killed does not satisfy
+  its minimum. A checkpoint is saved at transitions and every five seconds.
 
 Size, speed, animation, sounds and durations are configurable. Invalid numeric
 input prevents saving. Work pauses during Windows lock/suspend; mandatory rest
 reconciles on resume. Background applications are unaffected.
+
+### What this can and cannot enforce
+
+This is a local commitment aid, **not an unkillable or tamper-proof application**.
+Task Manager, Windows process termination, an administrator, uninstallation or
+editing/removing local data can bypass it. TheEye does not disable Task Manager,
+change process security, install a service/driver/watchdog, or prevent Windows
+shutdown. If killed, it cannot display reminders until launched again.
+
+The ledger lives in `%LOCALAPPDATA%/TheEye/commitment.json`. Ticket spending and
+commitment release are saved atomically before exit. A failed save does not
+authorize exit, and unreadable ledger data is not silently reset to three tickets.
+Windows uptime/boot-time estimates and the current logon identity distinguish
+relaunches from shutdowns, including normal Fast Startup shutdowns. Abrupt power
+loss and major system-clock changes cannot be tested here and may affect recovery.
 
 ## Artwork and display
 
@@ -75,6 +101,8 @@ NumPy required). Rebuild artwork with `python tools/compose_triangle.py`
   and a results file. Checks Settings Save/Cancel, published assets, actual
   movement, rest minimization, locked-button rejection and unlocking. It saves
   the current settings unchanged.
+  Ticket tests use an isolated temporary ledger and never spend real tickets.
+  Verification/capture overrides are ignored while a real commitment is active.
 
 ## Architecture
 
@@ -93,7 +121,8 @@ runtime network, accounts or telemetry.
 
 Settings: `%LOCALAPPDATA%/TheEye/settings.json`.
 Bounded error log: `%LOCALAPPDATA%/TheEye/theeye.log`.
-Launch with Windows always starts idle.
+Launch after a completed shutdown starts idle; an interrupted commitment during
+the same boot resumes instead. Weekly ticket usage survives both.
 
 ## Limitations
 

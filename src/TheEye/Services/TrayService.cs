@@ -9,8 +9,10 @@ public sealed class TrayService : IDisposable
     private readonly NotifyIcon _notifyIcon;
     private readonly ToolStripMenuItem _startItem;
     private readonly ToolStripMenuItem _restItem;
+    private readonly ToolStripMenuItem _exitItem;
+    private readonly ToolStripMenuItem _ticketInfo;
 
-    public TrayService(Action open, Action start, Action rest, Action settings, Action preview, Action exit)
+    public TrayService(Action open, Action start, Action rest, Action settings, Action preview, Action exit, Action refresh)
     {
         _startItem = new ToolStripMenuItem("Start Working", null, (_, _) => start());
         _restItem = new ToolStripMenuItem("Resting Now", null, (_, _) => rest());
@@ -21,7 +23,12 @@ public sealed class TrayService : IDisposable
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(new ToolStripMenuItem("Settings", null, (_, _) => settings()));
         menu.Items.Add(new ToolStripMenuItem("Animation Preview", null, (_, _) => preview()));
-        menu.Items.Add(new ToolStripMenuItem("Exit", null, (_, _) => exit()));
+        _ticketInfo = new ToolStripMenuItem("Emergency tickets: 3/3 (reset Monday)") { Enabled = false };
+        _exitItem = new ToolStripMenuItem("Exit", null, (_, _) => exit());
+        menu.Items.Add(new ToolStripSeparator());
+        menu.Items.Add(_ticketInfo);
+        menu.Items.Add(_exitItem);
+        menu.Opening += (_, _) => refresh();
 
         // Load the packaged icon directly so Explorer's executable-icon cache
         // cannot keep an older character icon in the notification area.
@@ -40,8 +47,11 @@ public sealed class TrayService : IDisposable
         };
     }
 
-    public void Update(SessionState state)
+    public void Update(SessionState state, bool committed = false, int ticketsRemaining = 3)
     {
+        _ticketInfo.Text = $"Emergency tickets: {ticketsRemaining}/3 (reset Monday)";
+        _exitItem.Text = committed ? $"Use emergency ticket ({ticketsRemaining} left)" : "Exit";
+        _exitItem.Enabled = !committed || ticketsRemaining > 0;
         _startItem.Enabled = state == SessionState.Idle;
         _restItem.Enabled = state == SessionState.Working;
         _notifyIcon.Text = state switch
@@ -52,6 +62,8 @@ public sealed class TrayService : IDisposable
             _ => "TheEye"
         };
     }
+
+    public void ShowNotice(string message) => _notifyIcon.ShowBalloonTip(5000, "TheEye", message, ToolTipIcon.Info);
 
     public void Dispose()
     {

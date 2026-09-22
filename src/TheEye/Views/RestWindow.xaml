@@ -47,5 +47,8 @@
     MouseEnter="RestedButton_MouseEnter" PreviewMouseDown="RestedButton_PreviewMouseDown"
     PreviewTouchDown="RestedButton_PreviewTouchDown"/>
   </Canvas>
+  <Button x:Name="EmergencyTicketButton" Content="Use emergency ticket" Style="{StaticResource RestButtonStyle}"
+   HorizontalAlignment="Right" VerticalAlignment="Top" Margin="30" Click="EmergencyTicketButton_Click"
+   ToolTip="Exit using one of three weekly tickets. Confirmation required."/>
  </Grid>
 </Window>

@@ -27,6 +27,9 @@ public sealed class SessionManager
 
     public event Action<SessionWarning>? WarningRaised;
 
+    // The desktop host persists the commitment before the first work session.
+    public Func<bool>? BeforeFirstStart { get; set; }
+
     public void UpdateOptions(SessionOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -41,6 +44,8 @@ public sealed class SessionManager
         {
             return false;
         }
+
+        if (State == SessionState.Idle && BeforeFirstStart?.Invoke() == false) return false;
 
         _fiveMinuteWarningRaised = false;
         _oneMinuteWarningRaised = false;
@@ -79,6 +84,29 @@ public sealed class SessionManager
         _oneMinuteWarningRaised = false;
         _isSuspended = false;
         TransitionTo(SessionState.Idle);
+    }
+
+    public void Restore(SessionSnapshot saved, TimeSpan elapsedWhileClosed)
+    {
+        if (State != SessionState.Idle) throw new InvalidOperationException("Restore requires an idle session.");
+        if (saved.State is not (SessionState.Working or SessionState.MandatoryRestLocked or SessionState.MandatoryRestComplete))
+            throw new ArgumentException("Invalid recovery state.", nameof(saved));
+        _fiveMinuteWarningRaised = saved.FiveMinuteWarningRaised;
+        _oneMinuteWarningRaised = saved.OneMinuteWarningRaised;
+        _isSuspended = false;
+        // Work deadlines advance while closed. Rest is not credited while its
+        // window is absent: killing the app must not satisfy the rest minimum.
+        var elapsed = saved.State == SessionState.Working && !saved.IsSuspended
+            ? TimeSpan.FromTicks(Math.Max(0, elapsedWhileClosed.Ticks)) : TimeSpan.Zero;
+        var remaining = saved.Remaining - elapsed;
+        if (saved.State == SessionState.Working && remaining <= TimeSpan.Zero)
+        {
+            EnterMandatoryRest();
+            return;
+        }
+        _deadline = _clock.MonotonicNow + remaining;
+        TransitionTo(saved.State);
+        Tick();
     }
 
     public void Tick()
@@ -191,7 +219,7 @@ public sealed class SessionManager
     private SessionSnapshot CreateSnapshot()
     {
         var remaining = State is SessionState.Working or SessionState.MandatoryRestLocked
-            ? RemainingUntilDeadline()
+            ? (_isSuspended ? _suspendedRemaining : RemainingUntilDeadline())
             : TimeSpan.Zero;
 
         return new SessionSnapshot(

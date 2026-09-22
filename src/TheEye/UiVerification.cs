@@ -27,7 +27,7 @@ public partial class App
             var manualClock = new VerificationClock();
             _session!.SnapshotChanged -= OnSnapshotChanged;
             _session.WarningRaised -= OnWarningRaised;
-            _session = new SessionManager(manualClock, CreateSessionOptions());
+            _session = new SessionManager(manualClock, CreateSessionOptions()) { BeforeFirstStart = PersistFirstStart };
             _session.SnapshotChanged += OnSnapshotChanged;
             _session.WarningRaised += OnWarningRaised;
             _mainWindow!.DataContext = new ViewModels.MainViewModel(_session,
@@ -66,6 +66,9 @@ public partial class App
             mouseClick.Invoke(notify, [new System.Windows.Forms.MouseEventArgs(System.Windows.Forms.MouseButtons.Left, 1, 0, 0, 0)]);
             Check(_mainWindow.IsVisible, "Single left-click on tray icon opens the main window");
             Check(notify.Icon is not null, "Notification area loads the packaged eye icon");
+            var exitItem = (System.Windows.Forms.ToolStripMenuItem)typeof(Services.TrayService)
+                .GetField("_exitItem", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(_tray)!;
+            Check(exitItem.Text == "Exit" && exitItem.Enabled, "Idle permits an ordinary exit without using a ticket");
             foreach (var pair in _pet!.Animations)
                 Check(_petService!.LoadFrame(_pet, pair.Key) is not null, $"Published asset: {pair.Key}");
             OpenSettings();
@@ -92,6 +95,10 @@ public partial class App
             StopPreview();
             _session.UpdateOptions(_session.Options with { StrictModeEnabled = true });
             ((ViewModels.MainViewModel)_mainWindow.DataContext).StartWorkingCommand.Execute(null);
+            Check(_focusGuard is { IsCommitted: true, TicketsRemaining: 3 }, "Starting work durably commits without spending a ticket");
+            Check(exitItem.Text?.Contains("Use emergency ticket") == true && exitItem.Text.Contains("3 left"), "Tray replaces Exit with weekly emergency-ticket action");
+            RequestExit();
+            Check(!IsExiting && _session!.State == SessionState.Working, "Ordinary exit cannot bypass a working commitment");
             Check(_overlay is { IsVisible: false }, "No companion during ordinary work");
             OpenAnimationPreview();
             StopPreview();
@@ -109,6 +116,8 @@ public partial class App
             var manualRestButton = (Button)_restWindow!.FindName("RestedButton");
             manualRestButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Check(_session.State == SessionState.MandatoryRestLocked, "Manual Rested button cannot bypass the minimum");
+            var emergencyButton = (Button)_restWindow.FindName("EmergencyTicketButton");
+            Check(emergencyButton.IsEnabled && emergencyButton.Content.ToString()!.Contains("3 left"), "Emergency exit is accessible on the full-screen rest window");
             Check(manualRestButton.Background is LinearGradientBrush, "Rest button uses the pink-white gradient style");
             var restImage = (System.Windows.Controls.Image)_restWindow!.FindName("PetImage");
             Check(restImage.Source is BitmapSource { PixelWidth: 2240, PixelHeight: 1260 }, "Rest loads the full-resolution meditation landscape");
@@ -122,6 +131,7 @@ public partial class App
             manualClock.MonotonicNow += TimeSpan.FromSeconds(1);
             _session.Tick();
             Check(manualRestButton.Focusable, "Manual Rested unlocks after the minimum");
+            Check(_focusGuard!.IsCommitted, "Finishing the rest minimum does not grant a free exit");
             Capture(_restWindow, Path.Combine(directory, "rest-unlocked.png"));
             manualRestButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Check(_restWindow is null && _session.State == SessionState.Working, "Rested starts a fresh work session");
@@ -183,6 +193,16 @@ public partial class App
             Check(testSession.State == SessionState.Working, "Unlocked Rested starts work");
             lockedRest.AllowClose = true;
             lockedRest.Close();
+            Check(_verificationMode, "UI verification uses an isolated ledger, never the user's tickets");
+            _session!.Stop();
+            for (var i = 0; i < 3; i++)
+            {
+                Check(_focusGuard!.TryUseEmergencyTicket(), $"Isolated emergency ticket {i + 1} can be spent");
+                _focusGuard.BeginWork(_session.Options);
+            }
+            RefreshCommitmentUi();
+            Check(_focusGuard!.TicketsRemaining == 0 && !_focusGuard.TryUseEmergencyTicket(), "Fourth weekly emergency exit is rejected");
+            Check(!exitItem.Enabled && exitItem.Text?.Contains("0 left") == true, "Tray disables emergency exit when weekly tickets are exhausted");
             File.WriteAllLines(Path.Combine(directory, "results.txt"), results);
         }
         catch (Exception ex)
@@ -191,7 +211,7 @@ public partial class App
             File.WriteAllLines(Path.Combine(directory, "results.txt"), results);
             Environment.ExitCode = 1;
         }
-        finally { RequestExit(); }
+        finally { ExitApplication(); } // Isolated verification ledger, never real tickets.
     }
     private static void Capture(Window window, string path)
     {

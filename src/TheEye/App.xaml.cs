@@ -62,12 +62,27 @@ public partial class App : System.Windows.Application
         _soundService = new SoundService();
         Settings = await _settingsService.LoadAsync();
         Settings.SelectedPet = "Triangle";
+        InitializeFocusGuard(e.Args);
+        if (!_verificationMode)
+        {
+            try
+            {
+                _startupService.SetEnabled(true);
+                if (!Settings.LaunchWithWindows)
+                {
+                    Settings.LaunchWithWindows = true;
+                    await _settingsService.SaveAsync(Settings);
+                }
+            }
+            catch (Exception ex) { _log.Error("Could not enable startup", ex); }
+        }
         _previewTimer.Tick += (_, _) => StopPreview();
-        _developmentTimers = e.Args.Contains("--dev-timers", StringComparer.OrdinalIgnoreCase) ||
-            string.Equals(Environment.GetEnvironmentVariable("THEEYE_DEVELOPMENT_TIMERS"), "1", StringComparison.Ordinal);
+        _developmentTimers = _allowDiagnostics && (e.Args.Contains("--dev-timers", StringComparer.OrdinalIgnoreCase) ||
+            string.Equals(Environment.GetEnvironmentVariable("THEEYE_DEVELOPMENT_TIMERS"), "1", StringComparison.Ordinal));
 
         _pet = _petService.Load(Settings.SelectedPet);
-        _session = new SessionManager(new SystemClock(), CreateSessionOptions());
+        _session = new SessionManager(new SystemClock(), _focusGuard?.Recovery?.Options ?? CreateSessionOptions())
+        { BeforeFirstStart = PersistFirstStart };
         _session.SnapshotChanged += OnSnapshotChanged;
         _session.WarningRaised += OnWarningRaised;
         _sessionTimer.Tick += (_, _) => _session.Tick();
@@ -82,7 +97,8 @@ public partial class App : System.Windows.Application
             BeginRestFromTray,
             OpenSettings,
             () => OpenAnimationPreview(),
-            RequestExit);
+            RequestTrayExit,
+            RefreshCommitmentUi);
 
         SystemEvents.PowerModeChanged += SystemEvents_PowerModeChanged;
         SystemEvents.SessionSwitch += SystemEvents_SessionSwitch;
@@ -94,8 +110,16 @@ public partial class App : System.Windows.Application
             _mainWindow.Show();
         }
 
+        if (_focusGuard?.Recovery is { } recovery)
+        {
+            var elapsed = _focusGuard.ElapsedSinceCheckpoint;
+            _session.Restore(recovery.Snapshot, elapsed);
+            _log.Info("Resumed commitment after an interrupted process");
+        }
+        RefreshCommitmentUi();
+
         var captureArgument = e.Args.FirstOrDefault(argument => argument.StartsWith("--capture-ui=", StringComparison.OrdinalIgnoreCase));
-        if (captureArgument is not null)
+        if (_allowDiagnostics && captureArgument is not null)
         {
             var capturePath = captureArgument["--capture-ui=".Length..];
             _mainWindow.ContentRendered += (_, _) => CaptureMainWindow(capturePath);
@@ -112,7 +136,7 @@ public partial class App : System.Windows.Application
 
         _log.Info($"TheEye started{(_developmentTimers ? " with development timers" : string.Empty)}");
         var verifyArgument = e.Args.FirstOrDefault(a => a.StartsWith("--verify-ui=", StringComparison.OrdinalIgnoreCase));
-        if (verifyArgument is not null)
+        if (_verificationMode && verifyArgument is not null)
             await VerifyUiAsync(verifyArgument["--verify-ui=".Length..]);
     }
 
@@ -198,6 +222,7 @@ public partial class App : System.Windows.Application
         }
 
         var updated = SettingsSerializer.Deserialize(SettingsSerializer.Serialize(settings)).Normalize();
+        updated.LaunchWithWindows = true;
         await _settingsService.SaveAsync(updated);
         Settings = updated;
         try
@@ -217,21 +242,13 @@ public partial class App : System.Windows.Application
 
     public void RequestExit()
     {
-        if (IsStrictRestLocked())
+        if (_focusGuard?.IsCommitted == true || IsStrictRestLocked())
         {
-            SystemSounds.Exclamation.Play();
+            _tray?.ShowNotice("A work commitment is active. Use an emergency ticket to exit, or shut down Windows.");
             BringRestForward();
             return;
         }
-
-        IsExiting = true;
-        if (_restWindow is not null)
-        {
-            _restWindow.AllowClose = true;
-            _restWindow.Close();
-        }
-
-        Shutdown();
+        ExitApplication();
     }
 
     protected override void OnExit(ExitEventArgs e)
@@ -282,7 +299,7 @@ public partial class App : System.Windows.Application
 
     private void OnSnapshotChanged(SessionSnapshot snapshot)
     {
-        _tray?.Update(snapshot.State);
+        SaveCommitmentSnapshot(snapshot);
         var stateChanged = snapshot.State != _lastLoggedState;
         if (stateChanged)
         {
@@ -328,6 +345,7 @@ public partial class App : System.Windows.Application
         {
             _overlay?.HidePet();
         }
+        RefreshCommitmentUi();
     }
 
     private void OnWarningRaised(SessionWarning warning)
@@ -492,8 +510,7 @@ public partial class App : System.Windows.Application
         }
         finally
         {
-            IsExiting = true;
-            Shutdown();
+            if (_focusGuard?.IsCommitted != true) ExitApplication();
         }
     }
 }
