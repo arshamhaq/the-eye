@@ -78,11 +78,6 @@ controls support minimize, maximize/restore and hiding to the tray; drag the
 titlebar to move the window, or double-click it to maximize/restore.
 See [artwork provenance](artwork/README.md).
 
-Button glows also use separate backing shapes: labels and borders are not
-rasterized through an effect surface. DPI-aware layout rounding and display
-text formatting keep them sharp at 125% Windows scaling. The rest buttons
-retain their pink-white palette.
-
 ## Build, test and publish
 
 Development requires .NET 10 SDK.
@@ -99,10 +94,6 @@ meets its expected dimensions, and that the sprite has actual transparency.
 Artwork regression checks: `python tools/test_triangle_assets.py` (Pillow and
 NumPy required). Rebuild artwork with `python tools/compose_triangle.py`
 (also requires OpenCV and SciPy). The supplied originals are never overwritten.
-
-`dotnet run --project tools/TheEye.RenderingChecks -c Release` checks all three
-window button styles and renders 1920 x 1080 previews at the display's native
-DPI. It runs off-screen without touching the active session or ticket ledger.
 
 - `--dev-timers`: 30-second work and 10-second rest.
 - `--preview`: immediate taskbar preview.
