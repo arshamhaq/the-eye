@@ -22,6 +22,16 @@ public partial class App
         }
         try
         {
+            // Exercise the actual UI with a controllable clock, including the
+            // full configured manual-rest minimum, without waiting minutes.
+            var manualClock = new VerificationClock();
+            _session!.SnapshotChanged -= OnSnapshotChanged;
+            _session.WarningRaised -= OnWarningRaised;
+            _session = new SessionManager(manualClock, CreateSessionOptions());
+            _session.SnapshotChanged += OnSnapshotChanged;
+            _session.WarningRaised += OnWarningRaised;
+            _mainWindow!.DataContext = new ViewModels.MainViewModel(_session,
+                _petService!.LoadFrame(_pet!, "landscape"), _petService.LoadFrame(_pet!, "walk"));
             ShowMainWindow();
             await Task.Delay(300);
             Capture(_mainWindow!, Path.Combine(directory, "main.png"));
@@ -44,6 +54,18 @@ public partial class App
             ((Button)_mainWindow.FindName("MinimizeButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Check(_mainWindow.WindowState == WindowState.Minimized, "Custom minimize works");
             ShowMainWindow();
+            // Raise NotifyIcon's native mouse event, exercising the registered
+            // handler rather than calling the open callback directly.
+            var notify = (System.Windows.Forms.NotifyIcon)typeof(Services.TrayService)
+                .GetField("_notifyIcon", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(_tray)!;
+            var mouseClick = typeof(System.Windows.Forms.NotifyIcon).GetMethod("OnMouseClick",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+            _mainWindow.Hide();
+            mouseClick.Invoke(notify, [new System.Windows.Forms.MouseEventArgs(System.Windows.Forms.MouseButtons.Right, 1, 0, 0, 0)]);
+            Check(!_mainWindow.IsVisible, "Right-click tray action does not unexpectedly open the main window");
+            mouseClick.Invoke(notify, [new System.Windows.Forms.MouseEventArgs(System.Windows.Forms.MouseButtons.Left, 1, 0, 0, 0)]);
+            Check(_mainWindow.IsVisible, "Single left-click on tray icon opens the main window");
+            Check(notify.Icon is not null, "Notification area loads the packaged eye icon");
             foreach (var pair in _pet!.Animations)
                 Check(_petService!.LoadFrame(_pet, pair.Key) is not null, $"Published asset: {pair.Key}");
             OpenSettings();
@@ -68,24 +90,40 @@ public partial class App
             Check(image.ActualHeight + 12 < _previewOverlay.ActualHeight, "Sprite and hat fit inside overlay");
             Capture(_previewOverlay, Path.Combine(directory, "taskbar-overlay.png"));
             StopPreview();
-            _session!.StartWorking();
+            _session.UpdateOptions(_session.Options with { StrictModeEnabled = true });
+            ((ViewModels.MainViewModel)_mainWindow.DataContext).StartWorkingCommand.Execute(null);
             Check(_overlay is { IsVisible: false }, "No companion during ordinary work");
             OpenAnimationPreview();
             StopPreview();
             Check(_overlay is { IsVisible: false }, "Ending preview does not enable constant floating");
             RecreateOverlay();
             Check(_overlay is { IsVisible: false }, "Changing settings does not enable constant floating");
-            _session.BeginVoluntaryRest();
+            ((ViewModels.MainViewModel)_mainWindow.DataContext).RestingNowCommand.Execute(null);
             await Task.Delay(300);
             Check(_mainWindow!.WindowState == WindowState.Minimized, "Main window minimizes for rest");
             Check(_restWindow is { IsVisible: true }, "Rest window opens");
+            Check(_session.State == SessionState.MandatoryRestLocked &&
+                  _session.Snapshot.Remaining == _session.Options.MandatoryRestDuration,
+                "Resting Now starts the full configured locked-rest timer");
+            Check(!_session.CompleteRest() && !_session.StartWorking(), "Manual rest cannot be completed or restarted early");
+            var manualRestButton = (Button)_restWindow!.FindName("RestedButton");
+            manualRestButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(_session.State == SessionState.MandatoryRestLocked, "Manual Rested button cannot bypass the minimum");
+            Check(manualRestButton.Background is LinearGradientBrush, "Rest button uses the pink-white gradient style");
             var restImage = (System.Windows.Controls.Image)_restWindow!.FindName("PetImage");
             Check(restImage.Source is BitmapSource { PixelWidth: 2240, PixelHeight: 1260 }, "Rest loads the full-resolution meditation landscape");
             Capture(_restWindow, Path.Combine(directory, "rest.png"));
             var restCapture = new BitmapImage(new Uri(Path.Combine(directory, "rest.png")));
             var restScreen = System.Windows.Forms.Screen.FromHandle(new System.Windows.Interop.WindowInteropHelper(_restWindow).Handle);
             Check(restCapture.PixelWidth == restScreen.Bounds.Width && restCapture.PixelHeight == restScreen.Bounds.Height, "Rest render matches physical display resolution at current Windows DPI");
-            _session.CompleteRest();
+            manualClock.MonotonicNow += _session.Options.MandatoryRestDuration - TimeSpan.FromSeconds(1);
+            _session.Tick();
+            Check(!_session.CompleteRest(), "Manual rest stays locked until the final second");
+            manualClock.MonotonicNow += TimeSpan.FromSeconds(1);
+            _session.Tick();
+            Check(manualRestButton.Focusable, "Manual Rested unlocks after the minimum");
+            Capture(_restWindow, Path.Combine(directory, "rest-unlocked.png"));
+            manualRestButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Check(_restWindow is null && _session.State == SessionState.Working, "Rested starts a fresh work session");
             _session.Stop();
 

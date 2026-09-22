@@ -23,9 +23,10 @@ public sealed class TrayService : IDisposable
         menu.Items.Add(new ToolStripMenuItem("Animation Preview", null, (_, _) => preview()));
         menu.Items.Add(new ToolStripMenuItem("Exit", null, (_, _) => exit()));
 
-        var applicationIcon = Environment.ProcessPath is { } executable
-            ? Icon.ExtractAssociatedIcon(executable)
-            : null;
+        // Load the packaged icon directly so Explorer's executable-icon cache
+        // cannot keep an older character icon in the notification area.
+        var iconPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Assets", "TheEye.ico");
+        var applicationIcon = System.IO.File.Exists(iconPath) ? new Icon(iconPath) : null;
         _notifyIcon = new NotifyIcon
         {
             Icon = applicationIcon ?? SystemIcons.Information,
@@ -33,7 +34,10 @@ public sealed class TrayService : IDisposable
             ContextMenuStrip = menu,
             Visible = true
         };
-        _notifyIcon.DoubleClick += (_, _) => open();
+        _notifyIcon.MouseClick += (_, e) =>
+        {
+            if (e.Button == MouseButtons.Left) open();
+        };
     }
 
     public void Update(SessionState state)

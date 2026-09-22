@@ -33,6 +33,13 @@ Only Windows icon derivatives are reduced to required icon sizes. Display/DPI
 scaling never alters the saved artwork. Dark/white alpha-review composites are
 written to `artifacts/artwork-review`.
 
+## App icon
+
+The app/tray icon uses the separate user-supplied `originals/eye-icon-reference.png`
+(512 x 512 RGBA), unchanged. `tools/build_icon.py` packages it at the Windows
+icon sizes from 16 through 256 pixels, preserving alpha. Artwork regeneration
+also calls that script so it cannot restore the older full-character icon.
+
 ## Mountain background
 
 `mountains.png` is the previously generated, unchanged native 1672 x 941

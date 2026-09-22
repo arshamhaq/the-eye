@@ -20,12 +20,14 @@ Right-click the running taskbar icon to pin it.
   animation for 25 seconds without changing the session.
 - Resting Now minimizes the main window and opens the supplied meditation pose
   on an opaque ivory/pink cloud scene.
-  Voluntary rest can finish immediately.
+  An early break starts the same configured minimum rest lock as an automatic
+  break (when strict mode is enabled); it cannot be completed early.
 - At the work deadline, mandatory rest begins. For two minutes the visible
   Rested button dodges the pointer and rejects clicks, touch and keyboard input.
   The session state also rejects early completion. After the minimum, it settles
   and clicking it starts a fresh full session.
 - Closing the main window hides it to the tray. Tray Exit intentionally quits.
+  Single left-click the tray icon to reopen it; right-click opens its menu.
   Strict mandatory rest rejects ordinary close, Escape, Alt+F4 and tray Exit.
   It does not prevent termination through Task Manager.
 

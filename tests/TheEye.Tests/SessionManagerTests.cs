@@ -120,7 +120,7 @@ public sealed class SessionManagerTests
     }
 
     [Fact]
-    public void VoluntaryRestCancelsWorkAndRestedStartsFreshSession()
+    public void VoluntaryRestLocksForFullMinimumBeforeStartingFreshSession()
     {
         var (manager, clock) = Create();
         manager.StartWorking();
@@ -128,7 +128,17 @@ public sealed class SessionManagerTests
         manager.Tick();
 
         Assert.True(manager.BeginVoluntaryRest());
-        Assert.Equal(SessionState.VoluntaryRest, manager.State);
+        Assert.Equal(SessionState.MandatoryRestLocked, manager.State);
+        Assert.Equal(TimeSpan.FromMinutes(2), manager.Snapshot.Remaining);
+        Assert.False(manager.Snapshot.CanCompleteRest);
+        Assert.False(manager.CompleteRest());
+        Assert.False(manager.StartWorking());
+        clock.Advance(TimeSpan.FromSeconds(119));
+        manager.Tick();
+        Assert.False(manager.CompleteRest());
+        clock.Advance(TimeSpan.FromSeconds(1));
+        manager.Tick();
+        Assert.Equal(SessionState.MandatoryRestComplete, manager.State);
         Assert.True(manager.CompleteRest());
         Assert.Equal(TimeSpan.FromMinutes(20), manager.Snapshot.Remaining);
     }
@@ -156,6 +166,8 @@ public sealed class SessionManagerTests
         clock.Advance(TimeSpan.FromMinutes(15));
         manager.Tick();
         manager.BeginVoluntaryRest();
+        clock.Advance(TimeSpan.FromMinutes(2));
+        manager.Tick();
         manager.CompleteRest();
 
         Assert.False(manager.Snapshot.FiveMinuteWarningRaised);
@@ -221,6 +233,28 @@ public sealed class SessionManagerTests
 
         Assert.Equal(SessionState.MandatoryRestComplete, manager.State);
         Assert.True(manager.Snapshot.CanCompleteRest);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ManualAndAutomaticRestUseIdenticalRules(bool strict)
+    {
+        var manualClock = new FakeClock();
+        var automaticClock = new FakeClock();
+        var options = Options with { StrictModeEnabled = strict, MandatoryRestDuration = TimeSpan.FromMinutes(3) };
+        var manual = new SessionManager(manualClock, options);
+        var automatic = new SessionManager(automaticClock, options);
+        manual.StartWorking();
+        automatic.StartWorking();
+        manualClock.Advance(TimeSpan.FromMinutes(1));
+        automaticClock.Advance(options.WorkDuration);
+        Assert.True(manual.BeginVoluntaryRest());
+        automatic.Tick();
+        Assert.Equal(automatic.State, manual.State);
+        Assert.Equal(automatic.Snapshot.Remaining, manual.Snapshot.Remaining);
+        Assert.Equal(automatic.Snapshot.CanCompleteRest, manual.Snapshot.CanCompleteRest);
+        Assert.False(manual.BeginVoluntaryRest()); // cannot restart or bypass the lock
     }
 
     [Fact]

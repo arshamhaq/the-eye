@@ -57,8 +57,9 @@ public sealed class SessionManager
             return false;
         }
 
-        _isSuspended = false;
-        TransitionTo(SessionState.VoluntaryRest);
+        // Choosing an early break uses the same minimum and completion guard
+        // as reaching the work deadline; it is not a shortcut around rest.
+        EnterMandatoryRest();
         return true;
     }
 

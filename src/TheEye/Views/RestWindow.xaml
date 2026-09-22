@@ -4,6 +4,30 @@
  Title="TheEye Rest" WindowStyle="None" ResizeMode="NoResize" Background="#FAFAF3"
  ShowInTaskbar="False" Topmost="True" PreviewKeyDown="Window_PreviewKeyDown"
  PreviewMouseMove="Window_PreviewMouseMove">
+ <Window.Resources>
+  <Style x:Key="RestButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+   <Setter Property="Foreground" Value="#684454"/>
+   <Setter Property="Background">
+    <Setter.Value><LinearGradientBrush StartPoint="0,0" EndPoint="0,1"><GradientStop Color="#FFFEFC" Offset="0"/><GradientStop Color="#F4C9DB" Offset="1"/></LinearGradientBrush></Setter.Value>
+   </Setter>
+   <Setter Property="Template">
+    <Setter.Value>
+     <ControlTemplate TargetType="Button">
+      <Border x:Name="RestButtonBorder" Background="{TemplateBinding Background}" BorderBrush="#FFFFF9" BorderThickness="1" CornerRadius="14" Padding="{TemplateBinding Padding}">
+       <Border.Effect><DropShadowEffect Color="#F6BED6" BlurRadius="24" ShadowDepth="0" Opacity="0.9"/></Border.Effect>
+       <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+      </Border>
+      <ControlTemplate.Triggers>
+       <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="RestButtonBorder" Property="Background" Value="#FFF2F8"/></Trigger>
+       <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="RestButtonBorder" Property="BorderBrush" Value="#AD6B89"/></Trigger>
+       <Trigger Property="IsPressed" Value="True"><Setter TargetName="RestButtonBorder" Property="Background" Value="#ECC0D2"/></Trigger>
+       <Trigger Property="IsEnabled" Value="False"><Setter TargetName="RestButtonBorder" Property="Opacity" Value="0.45"/></Trigger>
+      </ControlTemplate.Triggers>
+     </ControlTemplate>
+    </Setter.Value>
+   </Setter>
+  </Style>
+ </Window.Resources>
  <Grid x:Name="RestSurface">
   <Image x:Name="PetImage" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality"/>
   <Viewbox Stretch="Uniform" IsHitTestVisible="False">
@@ -18,7 +42,7 @@
    </Grid>
   </Viewbox>
   <Canvas x:Name="ButtonLayer">
-   <Button x:Name="RestedButton" Content="Rested" Width="180" Height="52"
+   <Button x:Name="RestedButton" Content="Rested" Width="180" Height="52" Style="{StaticResource RestButtonStyle}"
     Focusable="False" IsTabStop="False" Click="RestedButton_Click"
     MouseEnter="RestedButton_MouseEnter" PreviewMouseDown="RestedButton_PreviewMouseDown"
     PreviewTouchDown="RestedButton_PreviewTouchDown"/>

@@ -9,6 +9,7 @@ import cv2
 import numpy as np
 from PIL import Image
 from scipy.ndimage import distance_transform_edt
+from build_icon import build_icon
 
 ROOT = Path(__file__).resolve().parents[1]
 ORIGINALS = ROOT / 'artwork/originals'
@@ -79,7 +80,7 @@ def main():
     mountain.alpha_composite(sprite, (1230, 70))
     mountain.convert('RGB').save(ASSETS / 'main.png')
     # Icon sizes are platform-required derivatives, not animation sources.
-    sprite.save(ROOT / 'src/TheEye/Assets/TheEye.ico', sizes=[(16,16),(32,32),(48,48),(64,64),(128,128),(256,256)])
+    build_icon()
     preview = ROOT / 'artifacts/artwork-review'
     preview.mkdir(parents=True, exist_ok=True)
     for label, color in [('dark', '#141823'), ('white', '#ffffff')]:
