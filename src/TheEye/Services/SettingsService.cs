@@ -7,9 +7,9 @@ public sealed class SettingsService
 {
     private readonly string _settingsPath;
 
-    public SettingsService()
+    public SettingsService(string? directory = null)
     {
-        var directory = Path.Combine(
+        directory ??= Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "TheEye");
         Directory.CreateDirectory(directory);

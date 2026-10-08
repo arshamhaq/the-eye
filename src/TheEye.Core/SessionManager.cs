@@ -8,6 +8,7 @@ public sealed class SessionManager
     private TimeSpan _suspendedRemaining;
     private bool _fiveMinuteWarningRaised;
     private bool _oneMinuteWarningRaised;
+    private bool _thirtySecondWarningRaised;
     private bool _isSuspended;
 
     public SessionManager(IClock clock, SessionOptions? options = null)
@@ -18,6 +19,8 @@ public sealed class SessionManager
     }
 
     public SessionState State { get; private set; } = SessionState.Idle;
+
+    public SessionMode Mode { get; private set; } = SessionMode.Working;
 
     public SessionOptions Options => _options;
 
@@ -38,20 +41,32 @@ public sealed class SessionManager
         PublishSnapshot();
     }
 
-    public bool StartWorking()
+    public bool StartWorking() => StartSession(SessionMode.Working);
+
+    public bool StartGaming() => StartSession(SessionMode.Gaming);
+
+    private bool StartSession(SessionMode mode)
     {
         if (State is not (SessionState.Idle or SessionState.VoluntaryRest or SessionState.MandatoryRestComplete))
         {
             return false;
         }
 
-        if (State == SessionState.Idle && BeforeFirstStart?.Invoke() == false) return false;
+        var previousMode = Mode;
+        Mode = mode;
+        if (State == SessionState.Idle && BeforeFirstStart?.Invoke() == false)
+        {
+            Mode = previousMode;
+            return false;
+        }
 
         _fiveMinuteWarningRaised = false;
         _oneMinuteWarningRaised = false;
+        _thirtySecondWarningRaised = false;
         _isSuspended = false;
         _deadline = _clock.MonotonicNow + _options.WorkDuration;
         TransitionTo(SessionState.Working);
+        if (Mode == SessionMode.Gaming && _options.WorkDuration <= TimeSpan.FromSeconds(30)) TickWorking();
         return true;
     }
 
@@ -75,13 +90,14 @@ public sealed class SessionManager
             return false;
         }
 
-        return StartWorking();
+        return StartSession(Mode);
     }
 
     public void Stop()
     {
         _fiveMinuteWarningRaised = false;
         _oneMinuteWarningRaised = false;
+        _thirtySecondWarningRaised = false;
         _isSuspended = false;
         TransitionTo(SessionState.Idle);
     }
@@ -91,8 +107,11 @@ public sealed class SessionManager
         if (State != SessionState.Idle) throw new InvalidOperationException("Restore requires an idle session.");
         if (saved.State is not (SessionState.Working or SessionState.MandatoryRestLocked or SessionState.MandatoryRestComplete))
             throw new ArgumentException("Invalid recovery state.", nameof(saved));
+        if (!Enum.IsDefined(saved.Mode)) throw new ArgumentException("Invalid recovery mode.", nameof(saved));
+        Mode = saved.Mode;
         _fiveMinuteWarningRaised = saved.FiveMinuteWarningRaised;
         _oneMinuteWarningRaised = saved.OneMinuteWarningRaised;
+        _thirtySecondWarningRaised = saved.ThirtySecondWarningRaised;
         _isSuspended = false;
         // Work deadlines advance while closed. Rest is not credited while its
         // window is absent: killing the app must not satisfy the rest minimum.
@@ -166,7 +185,17 @@ public sealed class SessionManager
             return;
         }
 
-        if (_options.OneMinuteWarningEnabled &&
+        if (Mode == SessionMode.Gaming)
+        {
+            // Gaming always has just one stationary, 30-second reminder,
+            // independently of the work-mode reminder settings.
+            if (!_thirtySecondWarningRaised && remaining <= TimeSpan.FromSeconds(30))
+            {
+                _thirtySecondWarningRaised = true;
+                WarningRaised?.Invoke(SessionWarning.ThirtySecondsRemaining);
+            }
+        }
+        else if (_options.OneMinuteWarningEnabled &&
             !_oneMinuteWarningRaised &&
             remaining <= _options.OneMinuteWarningThreshold)
         {
@@ -227,7 +256,9 @@ public sealed class SessionManager
             remaining < TimeSpan.Zero ? TimeSpan.Zero : remaining,
             _fiveMinuteWarningRaised,
             _oneMinuteWarningRaised,
-            _isSuspended);
+            _isSuspended,
+            Mode,
+            _thirtySecondWarningRaised);
     }
 
     private TimeSpan RemainingUntilDeadline() => _deadline - _clock.MonotonicNow;

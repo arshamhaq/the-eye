@@ -193,6 +193,104 @@ public partial class App
             Check(testSession.State == SessionState.Working, "Unlocked Rested starts work");
             lockedRest.AllowClose = true;
             lockedRest.Close();
+
+            // Exercise gaming through the real main-window command and the
+            // same host callbacks, with a fresh isolated ticket ledger.
+            _session!.SnapshotChanged -= OnSnapshotChanged;
+            _session.WarningRaised -= OnWarningRaised;
+            var gamingClock = new VerificationClock();
+            _session = new SessionManager(gamingClock, SessionOptions.Default) { BeforeFirstStart = PersistFirstStart };
+            _session.SnapshotChanged += OnSnapshotChanged;
+            _session.WarningRaised += OnWarningRaised;
+            _focusGuard = new FocusGuard(Path.Combine(_verificationDataDirectory!, "gaming", "commitment.json"));
+            _mainWindow.DataContext = new ViewModels.MainViewModel(_session,
+                _petService.LoadFrame(_pet, "landscape"), _petService.LoadFrame(_pet, "walk"));
+            _lastLoggedState = SessionState.Idle;
+            ShowMainWindow();
+            var gamingButton = (Button)_mainWindow.FindName("StartGamingButton");
+            Check(gamingButton.IsVisible && gamingButton.Command!.CanExecute(null), "Start Gaming is available alongside Start Working");
+            gamingButton.Command!.Execute(null);
+            Check(_session.Mode == SessionMode.Gaming && _session.Snapshot.Remaining == TimeSpan.FromMinutes(20), "Start Gaming begins a full twenty-minute session");
+            Check(_focusGuard.Recovery!.Snapshot.Mode == SessionMode.Gaming && _focusGuard.TicketsRemaining == 3,
+                "Gaming is durably saved before starting and does not spend a ticket");
+            Check(((ViewModels.MainViewModel)_mainWindow.DataContext).StatusText == "Gaming session", "Main window identifies the selected gaming mode");
+            Capture(_mainWindow, Path.Combine(directory, "gaming-main.png"));
+            Check(_overlay is { IsVisible: false }, "Gaming begins with no overlay");
+            gamingClock.MonotonicNow = TimeSpan.FromMinutes(15);
+            _session.Tick();
+            Check(!_overlay!.IsVisible, "Gaming has no five-minute floating warning");
+            gamingClock.MonotonicNow = TimeSpan.FromMinutes(19);
+            _session.Tick();
+            Check(!_overlay.IsVisible, "Gaming has no one-minute countdown");
+            RecreateOverlay();
+            Check(!_overlay!.IsVisible, "Recreating the overlay does not show an early gaming warning");
+            gamingClock.MonotonicNow = TimeSpan.FromSeconds(1169);
+            _session.Tick();
+            Check(!_overlay.IsVisible, "Gaming stays hidden at thirty-one seconds remaining");
+            gamingClock.MonotonicNow += TimeSpan.FromSeconds(1);
+            _session.Tick();
+            Check(_overlay.IsVisible && ((TextBlock)_overlay.FindName("BubbleText")).Text == "00:30", "Gaming countdown begins at exactly thirty seconds");
+            var gamingImage = (System.Windows.Controls.Image)_overlay.FindName("PetImage");
+            var gamingMotion = (TranslateTransform)gamingImage.RenderTransform;
+            var gamingBubble = (Border)_overlay.FindName("Bubble");
+            Check(gamingImage.Source is BitmapSource { IsFrozen: true } && !gamingMotion.HasAnimatedProperties && !_overlay.HasAnimatedProperties,
+                "Gaming uses a cached frozen sprite with no movement, bobbing or opacity animation clocks");
+            Check(gamingBubble.Effect is null && _overlay.Width < 400, "Gaming uses a compact surface without the bubble shadow effect");
+            var gamingPosition = new System.Windows.Point(_overlay.Left, _overlay.Top);
+            var gamingOffset = new System.Windows.Point(gamingMotion.X, gamingMotion.Y);
+            await Task.Delay(2200);
+            Check(gamingPosition == new System.Windows.Point(_overlay.Left, _overlay.Top) &&
+                gamingOffset == new System.Windows.Point(gamingMotion.X, gamingMotion.Y) && _overlay.Opacity == 1,
+                "Gaming companion remains stationary and fully opaque over time");
+            Capture(_overlay, Path.Combine(directory, "gaming-countdown.png"));
+            gamingClock.MonotonicNow += TimeSpan.FromSeconds(1);
+            _session.Tick();
+            Check(((TextBlock)_overlay.FindName("BubbleText")).Text == "00:29", "Gaming countdown updates once the next second elapses");
+            _session.Suspend();
+            Check(!_overlay.IsVisible, "Suspending gaming hides its countdown");
+            gamingClock.MonotonicNow += TimeSpan.FromHours(1);
+            _session.Resume();
+            Check(_overlay.IsVisible && ((TextBlock)_overlay.FindName("BubbleText")).Text == "00:29", "Resuming restores the paused gaming countdown");
+            await ApplySettingsAsync(Settings);
+            gamingMotion = (TranslateTransform)((System.Windows.Controls.Image)_overlay!.FindName("PetImage")).RenderTransform;
+            Check(_overlay.IsVisible && !gamingMotion.HasAnimatedProperties && _overlay.Width < 400 && _session.Mode == SessionMode.Gaming,
+                "Saving settings retains gaming mode and its stationary countdown");
+            OpenAnimationPreview();
+            var previewMotion = (TranslateTransform)((System.Windows.Controls.Image)_previewOverlay!.FindName("PetImage")).RenderTransform;
+            Check(!previewMotion.HasAnimatedProperties && !_previewOverlay.HasAnimatedProperties, "Explicit previews also stay stationary during gaming");
+            _session.Tick();
+            Check(_previewOverlay is null && _overlay.IsVisible, "A live gaming countdown replaces the preview without duplicate overlays");
+            gamingClock.MonotonicNow += TimeSpan.FromSeconds(28);
+            _session.Tick();
+            Check(((TextBlock)_overlay.FindName("BubbleText")).Text == "00:01", "Gaming countdown reaches the final second");
+            gamingClock.MonotonicNow += TimeSpan.FromSeconds(1);
+            _session.Tick();
+            await Task.Delay(250);
+            Check(!_overlay.IsVisible && _restWindow is { IsVisible: true }, "Gaming transitions directly from countdown to locked rest");
+            Check(_session.State == SessionState.MandatoryRestLocked && !_session.CompleteRest(), "Gaming retains the full mandatory rest lock");
+            var gamingRestImage = (System.Windows.Controls.Image)_restWindow!.FindName("PetImage");
+            Check(ReferenceEquals(gamingRestImage.Source, _petService.LoadFrame(_pet, "gaming-rest")) &&
+                gamingRestImage.Source is BitmapSource { PixelWidth: 1280, PixelHeight: 720 },
+                "Gaming rest displays the clean supplied landscape at its native resolution");
+            Check(((TextBlock)_restWindow.FindName("HeadingText")).Foreground is SolidColorBrush { Color.R: 255 },
+                "Gaming rest uses light text against its dark background");
+            Capture(_restWindow, Path.Combine(directory, "gaming-rest.png"));
+            var gamingRestCapture = new BitmapImage(new Uri(Path.Combine(directory, "gaming-rest.png")));
+            Check(gamingRestCapture.PixelWidth == restScreen.Bounds.Width && gamingRestCapture.PixelHeight == restScreen.Bounds.Height,
+                "Gaming rest covers the full physical monitor at the current Windows DPI");
+            var gamingRestButton = (Button)_restWindow.FindName("RestedButton");
+            gamingRestButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(_session.State == SessionState.MandatoryRestLocked, "Gaming Rested button cannot skip the minimum");
+            gamingClock.MonotonicNow += TimeSpan.FromMinutes(2);
+            _session.Tick();
+            gamingRestButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Check(_restWindow is null && _session.Mode == SessionMode.Gaming && _session.State == SessionState.Working &&
+                _session.Snapshot.Remaining == TimeSpan.FromMinutes(20) && !_overlay.IsVisible,
+                "Rested starts a fresh twenty-minute gaming session with the overlay hidden");
+            _session.BeginVoluntaryRest();
+            Check(_restWindow is not null && ReferenceEquals(((System.Windows.Controls.Image)_restWindow.FindName("PetImage")).Source,
+                _petService.LoadFrame(_pet, "gaming-rest")), "Early gaming breaks also use the gaming artwork");
+            _session.Stop();
             Check(_verificationMode, "UI verification uses an isolated ledger, never the user's tickets");
             _session!.Stop();
             for (var i = 0; i < 3; i++)

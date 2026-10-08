@@ -33,9 +33,9 @@
   <Viewbox Stretch="Uniform" IsHitTestVisible="False">
    <Grid Width="1920" Height="1080">
     <StackPanel Width="720" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="140,0,0,60">
-     <TextBlock Text="THE EYE / A MOMENT AWAY" FontSize="21" Foreground="#777762"/>
-     <TextBlock Text="Look a little further." FontSize="70" FontWeight="SemiBold" Foreground="#25281C" Margin="0,32,0,16"/>
-     <TextBlock Text="Relax your eyes. Stretch. Let your thoughts wander." FontSize="25" TextWrapping="Wrap" Foreground="#6C705B"/>
+     <TextBlock x:Name="EyebrowText" Text="THE EYE / A MOMENT AWAY" FontSize="21" Foreground="#777762"/>
+     <TextBlock x:Name="HeadingText" Text="Look a little further." FontSize="70" FontWeight="SemiBold" Foreground="#25281C" Margin="0,32,0,16"/>
+     <TextBlock x:Name="DescriptionText" Text="Relax your eyes. Stretch. Let your thoughts wander." FontSize="25" TextWrapping="Wrap" Foreground="#6C705B"/>
      <TextBlock x:Name="CountdownText" FontSize="115" FontWeight="Light" Foreground="#25281C" Margin="0,40,0,0"/>
      <TextBlock x:Name="LockedText" FontSize="20" Foreground="#777762" TextWrapping="Wrap"/>
     </StackPanel>

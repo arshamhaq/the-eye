@@ -8,6 +8,7 @@ public partial class App
 {
     private FocusGuard? _focusGuard;
     private bool _verificationMode;
+    private string? _verificationDataDirectory;
     private bool _allowDiagnostics;
     private bool _endingWindowsSession;
     private long _lastCheckpoint;
@@ -20,6 +21,16 @@ public partial class App
     {
         try
         {
+            _verificationMode = arguments.Any(a => a.StartsWith("--verify-ui=", StringComparison.OrdinalIgnoreCase));
+            if (_verificationMode)
+            {
+                // Isolate before opening any real ledger. UI checks can run
+                // beside an active app without restoring or changing its state.
+                _verificationDataDirectory = Path.Combine(Path.GetTempPath(), "TheEye-verification-" + Guid.NewGuid().ToString("N"));
+                _focusGuard = new FocusGuard(Path.Combine(_verificationDataDirectory, "commitment.json"));
+                _allowDiagnostics = true;
+                return;
+            }
             var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "TheEye", "commitment.json");
             string? logonId = null;
@@ -27,16 +38,10 @@ public partial class App
             catch (System.ComponentModel.Win32Exception ex) { _log?.Error("Could not read Windows logon identity", ex); }
             _focusGuard = new FocusGuard(path, windowsLogonId: logonId);
             _allowDiagnostics = !_focusGuard.IsCommitted;
-            _verificationMode = _allowDiagnostics && arguments.Any(a => a.StartsWith("--verify-ui=", StringComparison.OrdinalIgnoreCase));
-            if (_verificationMode)
-            {
-                // Tests never spend real tickets or clear a user's commitment.
-                var temporary = Path.Combine(Path.GetTempPath(), "TheEye-verification-" + Guid.NewGuid().ToString("N"), "commitment.json");
-                _focusGuard = new FocusGuard(temporary);
-            }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
+            _verificationMode = false;
             _guardFailure = ex.Message;
             _log?.Error("Cannot load commitment ledger; refusing to reset tickets", ex);
         }
@@ -48,12 +53,12 @@ public partial class App
         {
             if (_focusGuard is null) throw new IOException(_guardFailure ?? "Emergency ticket storage is unavailable.");
             if (_focusGuard.IsCommitted) return false;
-            _focusGuard.BeginWork(_session!.Options);
+            _focusGuard.BeginWork(_session!.Options, _session.Mode);
             return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            System.Windows.MessageBox.Show("Working was not started because the commitment could not be saved.\n\n" + ex.Message,
+            System.Windows.MessageBox.Show("The session was not started because the commitment could not be saved.\n\n" + ex.Message,
                 "TheEye", MessageBoxButton.OK, MessageBoxImage.Error);
             return false;
         }
@@ -92,7 +97,8 @@ public partial class App
         {
             _log?.Error("Could not refresh weekly tickets", ex);
         }
-        _tray?.Update(_session?.State ?? SessionState.Idle, _focusGuard?.IsCommitted == true, remaining);
+        _tray?.Update(_session?.State ?? SessionState.Idle, _focusGuard?.IsCommitted == true, remaining,
+            _session?.Mode ?? SessionMode.Working);
         _restWindow?.SetEmergencyTickets(remaining);
     }
 

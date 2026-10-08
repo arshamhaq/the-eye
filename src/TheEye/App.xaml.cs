@@ -45,7 +45,9 @@ public partial class App : System.Windows.Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
-        _singleInstanceMutex = new Mutex(initiallyOwned: true, @"Local\TheEye.SingleInstance", out var isFirstInstance);
+        var verificationRequested = e.Args.Any(a => a.StartsWith("--verify-ui=", StringComparison.OrdinalIgnoreCase));
+        var mutexName = verificationRequested ? @"Local\TheEye.UiVerification" : @"Local\TheEye.SingleInstance";
+        _singleInstanceMutex = new Mutex(initiallyOwned: true, mutexName, out var isFirstInstance);
         if (!isFirstInstance)
         {
             _singleInstanceMutex.Dispose();
@@ -56,13 +58,21 @@ public partial class App : System.Windows.Application
         }
 
         _log = new LogService();
-        _settingsService = new SettingsService();
         _startupService = new StartupService();
         _petService = new PetService(_log);
         _soundService = new SoundService();
+        InitializeFocusGuard(e.Args);
+        if (verificationRequested && !_verificationMode)
+        {
+            // A diagnostic process cannot restore or modify a real commitment.
+            _log.Error("Could not initialize isolated UI verification storage", new InvalidOperationException());
+            Environment.ExitCode = 1;
+            Shutdown();
+            return;
+        }
+        _settingsService = new SettingsService(_verificationDataDirectory);
         Settings = await _settingsService.LoadAsync();
         Settings.SelectedPet = "Triangle";
-        InitializeFocusGuard(e.Args);
         if (!_verificationMode)
         {
             try
@@ -94,6 +104,7 @@ public partial class App : System.Windows.Application
         _tray = new TrayService(
             ShowMainWindow,
             StartWorkingFromTray,
+            StartGamingFromTray,
             BeginRestFromTray,
             OpenSettings,
             () => OpenAnimationPreview(),
@@ -198,7 +209,10 @@ public partial class App : System.Windows.Application
         _overlay?.HidePet();
         var options = SettingsSerializer.Deserialize(SettingsSerializer.Serialize(previewSettings ?? Settings));
         _previewOverlay = new PetOverlayWindow(_petService, _pet, options);
-        _previewOverlay.ShowWorkingCompanion();
+        if (_session?.Mode == SessionMode.Gaming && _session.State != SessionState.Idle)
+            _previewOverlay.ShowCountdown(TimeSpan.FromSeconds(30), stationary: true);
+        else
+            _previewOverlay.ShowWorkingCompanion();
         _previewTimer.Start();
     }
 
@@ -208,8 +222,8 @@ public partial class App : System.Windows.Application
         _previewOverlay?.HidePet();
         _previewOverlay?.Close();
         _previewOverlay = null;
-        if (_session?.Snapshot is { State: SessionState.Working, OneMinuteWarningRaised: true } snapshot)
-            _overlay?.ShowCountdown(snapshot.Remaining);
+        if (_session?.Snapshot is { IsCountdownVisible: true } snapshot)
+            _overlay?.ShowCountdown(snapshot.Remaining, snapshot.Mode == SessionMode.Gaming);
     }
 
     public void ShowRestWindow() => BringRestForward();
@@ -227,7 +241,7 @@ public partial class App : System.Windows.Application
         Settings = updated;
         try
         {
-            _startupService.SetEnabled(Settings.LaunchWithWindows);
+            if (!_verificationMode) _startupService.SetEnabled(Settings.LaunchWithWindows);
         }
         catch (Exception ex)
         {
@@ -297,6 +311,11 @@ public partial class App : System.Windows.Application
         _session?.BeginVoluntaryRest();
     }
 
+    private void StartGamingFromTray()
+    {
+        if (_session?.StartGaming() == true) ShowMainWindow();
+    }
+
     private void OnSnapshotChanged(SessionSnapshot snapshot)
     {
         SaveCommitmentSnapshot(snapshot);
@@ -337,11 +356,12 @@ public partial class App : System.Windows.Application
             _overlay?.HidePet();
         }
 
-        if (snapshot.State == SessionState.Working && snapshot.OneMinuteWarningRaised)
+        if (snapshot.IsCountdownVisible)
         {
-            _overlay?.ShowCountdown(snapshot.Remaining);
+            if (_previewOverlay is not null) StopPreview();
+            _overlay?.ShowCountdown(snapshot.Remaining, snapshot.Mode == SessionMode.Gaming);
         }
-        else if (snapshot.State is not SessionState.Working)
+        else if (snapshot.State is not SessionState.Working || snapshot.IsSuspended)
         {
             _overlay?.HidePet();
         }
@@ -362,7 +382,7 @@ public partial class App : System.Windows.Application
         }
         else
         {
-            _overlay.ShowCountdown(_session.Snapshot.Remaining);
+            _overlay.ShowCountdown(_session.Snapshot.Remaining, warning == SessionWarning.ThirtySecondsRemaining);
         }
 
         if (Settings.WarningSoundsEnabled)
@@ -381,7 +401,8 @@ public partial class App : System.Windows.Application
         if (_restWindow is null)
         {
             StopPreview();
-            _restWindow = new RestWindow(_session, _petService.LoadFrame(_pet, "resting"));
+            _restWindow = new RestWindow(_session,
+                _petService.LoadFrame(_pet, snapshot.Mode == SessionMode.Gaming ? "gaming-rest" : "resting"));
             _restWindow.Update(snapshot);
             _restWindow.Show();
             _restWindow.Activate();
@@ -420,9 +441,9 @@ public partial class App : System.Windows.Application
         _overlay?.HidePet();
         _overlay?.Close();
         _overlay = new PetOverlayWindow(_petService, _pet, Settings);
-        if (_session?.Snapshot is { State: SessionState.Working, OneMinuteWarningRaised: true } snapshot)
+        if (_session?.Snapshot is { IsCountdownVisible: true } snapshot)
         {
-            _overlay.ShowCountdown(snapshot.Remaining);
+            _overlay.ShowCountdown(snapshot.Remaining, snapshot.Mode == SessionMode.Gaming);
         }
     }
 

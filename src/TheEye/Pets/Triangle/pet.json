@@ -11,6 +11,7 @@
     "warning": { "frames": ["Assets/float.png"] },
     "countdown": { "frames": ["Assets/float.png"] },
     "resting": { "frames": ["Assets/resting.png"] },
+    "gaming-rest": { "frames": ["Assets/gaming-rest.png"] },
     "happy": { "frames": ["Assets/main.png"] }
   }
 }

@@ -17,6 +17,17 @@ public partial class RestWindow : Window
         InitializeComponent();
         _session = session;
         PetImage.Source = petImage ?? throw new InvalidOperationException("The rest artwork is missing from this installation.");
+        if (session.Mode == SessionMode.Gaming)
+        {
+            Title = "TheEye Gaming Rest";
+            EyebrowText.Text = "THE EYE / BETWEEN ROUNDS";
+            var primary = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 251, 235));
+            var secondary = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(216, 210, 245));
+            primary.Freeze();
+            secondary.Freeze();
+            HeadingText.Foreground = CountdownText.Foreground = primary;
+            EyebrowText.Foreground = DescriptionText.Foreground = LockedText.Foreground = secondary;
+        }
         Loaded += (_, _) => { Services.DisplayGeometry.CoverMonitor(this); PlaceButton(); };
         SizeChanged += (_, _) => { if (IsLoaded) PlaceButton(); };
     }
@@ -34,7 +45,9 @@ public partial class RestWindow : Window
         CountdownText.Text = _locked ? MainViewModel.FormatRemaining(snapshot.Remaining)
             : snapshot.State == SessionState.VoluntaryRest ? "Take your time" : "Ready when you are";
         CountdownText.FontSize = _locked ? 115 : 64;
-        LockedText.Text = _locked ? "The button needs a break too. Catch it when the timer ends." : "Press Rested to begin a fresh work session.";
+        LockedText.Text = _locked ? "The button needs a break too. Catch it when the timer ends."
+            : snapshot.Mode == SessionMode.Gaming ? "Press Rested to begin a fresh gaming session."
+            : "Press Rested to begin a fresh work session.";
         RestedButton.Focusable = !_locked;
         RestedButton.IsTabStop = !_locked;
         if (wasLocked && !_locked) PlaceButton();

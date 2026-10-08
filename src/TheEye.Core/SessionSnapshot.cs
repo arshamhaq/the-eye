@@ -5,8 +5,13 @@ public sealed record SessionSnapshot(
     TimeSpan Remaining,
     bool FiveMinuteWarningRaised,
     bool OneMinuteWarningRaised,
-    bool IsSuspended)
+    bool IsSuspended,
+    SessionMode Mode = SessionMode.Working,
+    bool ThirtySecondWarningRaised = false)
 {
+    public bool IsCountdownVisible => State == SessionState.Working && !IsSuspended && Remaining > TimeSpan.Zero &&
+        (Mode == SessionMode.Gaming ? ThirtySecondWarningRaised : OneMinuteWarningRaised);
+
     public bool CanStartWorking => State == SessionState.Idle;
 
     public bool CanBeginVoluntaryRest => State == SessionState.Working;

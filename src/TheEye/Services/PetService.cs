@@ -104,7 +104,8 @@ public sealed class PetService
         {
             ["idle"] = new PetAnimation { Frames = ["Assets/main.png"] },
             ["walk"] = new PetAnimation { Frames = ["Assets/float.png"] },
-            ["resting"] = new PetAnimation { Frames = ["Assets/resting.png"] }
+            ["resting"] = new PetAnimation { Frames = ["Assets/resting.png"] },
+            ["gaming-rest"] = new PetAnimation { Frames = ["Assets/gaming-rest.png"] }
         }
     };
 }

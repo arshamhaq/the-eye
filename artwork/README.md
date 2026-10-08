@@ -33,6 +33,17 @@ Only Windows icon derivatives are reduced to required icon sizes. Display/DPI
 scaling never alters the saved artwork. Dark/white alpha-review composites are
 written to `artifacts/artwork-review`.
 
+## Gaming lock screen
+
+`originals/triangle-gaming-landscape.png` is the user's clean 1280 x 720
+landscape attachment. `src/TheEye/Pets/Triangle/Assets/gaming-rest.png` is a
+byte-for-byte copy, already in the same 16:9 ratio as the meditation screen.
+The PNG has fully opaque alpha. There is no saved resize, extension or redraw;
+only normal WPF display scaling. Tests verify the dimensions, opacity and
+exact file equality. The earlier 912 x 1120 portrait remains in
+`originals/triangle-gaming-hq.png` for provenance; the previous local background
+extension and its composition script have been superseded by the clean image.
+
 ## App icon
 
 The app/tray icon uses the separate user-supplied `originals/eye-icon-reference.png`

@@ -20,12 +20,15 @@ public partial class PetOverlayWindow : Window
     private readonly DispatcherTimer _warningTimer = new() { Interval = TimeSpan.FromSeconds(6) };
     private int _motionGeneration;
     private bool _finitePass;
+    private bool _stationary;
+    private readonly System.Windows.Media.Effects.Effect? _bubbleEffect;
     public PetOverlayWindow(PetService petService, PetDefinition pet, AppSettings settings)
     {
         InitializeComponent();
         _petService = petService;
         _pet = pet;
         _settings = settings;
+        _bubbleEffect = Bubble.Effect;
         PetImage.RenderTransform = _motion;
         Bubble.RenderTransform = _motion;
         _warningTimer.Tick += (_, _) =>
@@ -41,30 +44,33 @@ public partial class PetOverlayWindow : Window
         Bubble.Visibility = Visibility.Collapsed;
         EnsureVisible();
     }
-    public void ShowWarning(string message, string animation, bool autoHide)
+    public void ShowWarning(string message, string animation, bool autoHide, bool stationary = false)
     {
-        if (autoHide || _finitePass) StopMotion();
-        EnsureVisible(autoHide);
-        BubbleText.Text = message;
+        if (autoHide || _finitePass || stationary != _stationary) StopMotion();
+        EnsureVisible(autoHide, stationary);
+        if (BubbleText.Text != message) BubbleText.Text = message;
         Bubble.Visibility = Visibility.Visible;
         if (autoHide) _warningTimer.Start();
     }
-    public void ShowCountdown(TimeSpan remaining) => ShowWarning(MainViewModel.FormatRemaining(remaining), "countdown", false);
-    private void EnsureVisible(bool finitePass = false)
+    public void ShowCountdown(TimeSpan remaining, bool stationary = false) =>
+        ShowWarning(MainViewModel.FormatRemaining(remaining), "countdown", false, stationary);
+    private void EnsureVisible(bool finitePass = false, bool stationary = false)
     {
         if (_running && IsVisible) return;
         PetImage.Source = _petService.LoadFrame(_pet, "walk")
             ?? throw new InvalidOperationException("The floating sprite is missing.");
+        _stationary = stationary;
+        Bubble.Effect = stationary ? null : _bubbleEffect;
         if (!IsVisible) Show();
         PositionAtTaskbar();
         UpdateLayout();
         _running = true;
         _finitePass = finitePass;
         var travel = Math.Max(0, ActualWidth - PetImage.Width - 48);
-        _motion.X = travel;
+        _motion.X = stationary ? 24 : travel;
         _motion.Y = 0;
         Opacity = 1;
-        if (!_settings.AnimationEnabled) return;
+        if (stationary || !_settings.AnimationEnabled) return;
         var speed = Math.Clamp(_settings.AnimationSpeed, 0.5, 2);
         var movement = new DoubleAnimation(travel, 24, TimeSpan.FromSeconds(18 / speed))
         {
@@ -106,11 +112,15 @@ public partial class PetOverlayWindow : Window
         var height = Math.Min(requested, screen.WorkingArea.Height / scale * 0.48);
         PetImage.Height = height;
         PetImage.Width = height * PetImage.Source.Width / PetImage.Source.Height;
-        Width = screen.WorkingArea.Width / scale;
+        // Gaming needs only a small, static surface, not a monitor-wide
+        // transparent window being composited on every animation frame.
+        Width = _stationary ? Math.Max(PetImage.Width + 48, 150) : screen.WorkingArea.Width / scale;
         Height = height + 80;
+        var physicalWidth = (int)Math.Ceiling(Width * scale);
         var physicalHeight = (int)Math.Ceiling(Height * scale);
-        SetWindowPos(handle, new IntPtr(-1), screen.WorkingArea.Left,
-            screen.WorkingArea.Bottom - physicalHeight, screen.WorkingArea.Width, physicalHeight, 0x0050);
+        var left = _stationary ? screen.WorkingArea.Right - physicalWidth : screen.WorkingArea.Left;
+        SetWindowPos(handle, new IntPtr(-1), left,
+            screen.WorkingArea.Bottom - physicalHeight, physicalWidth, physicalHeight, 0x0050);
     }
     protected override void OnSourceInitialized(EventArgs e)
     {

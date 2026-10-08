@@ -213,6 +213,42 @@ public sealed class FocusGuardTests : IDisposable
         Assert.Equal(TimeSpan.FromMinutes(15), restored.Snapshot.Remaining);
     }
 
+    [Fact]
+    public void GamingUsesTheSameWeeklyTicketsAndPersistsModeFromFirstStart()
+    {
+        var guard = Load();
+        guard.BeginWork(SessionOptions.Default, SessionMode.Gaming);
+        Assert.Equal(SessionMode.Gaming, Load().Recovery!.Snapshot.Mode);
+        Assert.Equal(3, guard.TicketsRemaining);
+        Assert.True(guard.TryUseEmergencyTicket());
+        guard.BeginWork(SessionOptions.Default);
+        Assert.Equal(2, Load().TicketsRemaining);
+        Assert.True(guard.TryUseEmergencyTicket());
+        guard.BeginWork(SessionOptions.Default, SessionMode.Gaming);
+        Assert.True(guard.TryUseEmergencyTicket());
+        guard.BeginWork(SessionOptions.Default, SessionMode.Gaming);
+        Assert.False(guard.TryUseEmergencyTicket());
+        Assert.True(Load().IsCommitted);
+    }
+
+    [Fact]
+    public void LegacyLedgerWithoutModeRestoresWorkingAndExistingTicketBalance()
+    {
+        var guard = Load();
+        guard.BeginWork(SessionOptions.Default);
+        guard.TryUseEmergencyTicket();
+        guard.BeginWork(SessionOptions.Default);
+        var json = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(LedgerPath))!;
+        var snapshot = json["Recovery"]!["Snapshot"]!.AsObject();
+        snapshot.Remove("Mode");
+        snapshot.Remove("ThirtySecondWarningRaised");
+        File.WriteAllText(LedgerPath, json.ToJsonString());
+        var restored = Load();
+        Assert.Equal(SessionMode.Working, restored.Recovery!.Snapshot.Mode);
+        Assert.False(restored.Recovery.Snapshot.ThirtySecondWarningRaised);
+        Assert.Equal(2, restored.TicketsRemaining);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_directory)) Directory.Delete(_directory, recursive: true);

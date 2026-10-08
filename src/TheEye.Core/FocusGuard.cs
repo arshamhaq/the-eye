@@ -34,7 +34,8 @@ public sealed class FocusGuard
                 {
                     recovery.Options.Validate();
                     if (recovery.Snapshot.State is not (SessionState.Working or SessionState.MandatoryRestLocked or SessionState.MandatoryRestComplete) ||
-                        recovery.Snapshot.Remaining < TimeSpan.Zero || recovery.CapturedUptime < TimeSpan.Zero)
+                        recovery.Snapshot.Remaining < TimeSpan.Zero || recovery.CapturedUptime < TimeSpan.Zero ||
+                        !Enum.IsDefined(recovery.Snapshot.Mode))
                         throw new InvalidDataException("Saved commitment is invalid.");
                 }
             }
@@ -78,10 +79,10 @@ public sealed class FocusGuard
         uptime >= saved.CapturedUptime &&
         ((now.ToUniversalTime() - uptime) - (saved.CapturedUtc - saved.CapturedUptime)).Duration() < TimeSpan.FromMinutes(2);
 
-    public void BeginWork(SessionOptions options)
+    public void BeginWork(SessionOptions options, SessionMode mode = SessionMode.Working)
     {
         if (IsCommitted) throw new InvalidOperationException("An existing commitment must be resumed.");
-        Checkpoint(new SessionSnapshot(SessionState.Working, options.WorkDuration, false, false, false), options);
+        Checkpoint(new SessionSnapshot(SessionState.Working, options.WorkDuration, false, false, false, mode), options);
     }
 
     public void Checkpoint(SessionSnapshot snapshot, SessionOptions options)

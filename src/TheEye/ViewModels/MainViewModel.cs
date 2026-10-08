@@ -14,6 +14,7 @@ public sealed class MainViewModel : ObservableObject
         PetImage = petImage;
         CompanionImage = companionImage;
         StartWorkingCommand = new RelayCommand(() => _session.StartWorking(), () => IsIdle);
+        StartGamingCommand = new RelayCommand(() => _session.StartGaming(), () => IsIdle);
         RestingNowCommand = new RelayCommand(() => _session.BeginVoluntaryRest(), () => IsWorking);
         RestedCommand = new RelayCommand(() => _session.CompleteRest(), () => CanCompleteRest);
         OpenSettingsCommand = new RelayCommand(() => App.CurrentApp.OpenSettings());
@@ -25,6 +26,8 @@ public sealed class MainViewModel : ObservableObject
     public BitmapSource? CompanionImage { get; }
 
     public RelayCommand StartWorkingCommand { get; }
+
+    public RelayCommand StartGamingCommand { get; }
 
     public RelayCommand RestingNowCommand { get; }
 
@@ -50,7 +53,10 @@ public sealed class MainViewModel : ObservableObject
 
     public string RemainingText => FormatRemaining(_session.Snapshot.Remaining);
 
-    public string StatusText => _session.Snapshot.IsSuspended ? "Paused while Windows is away" : "Work session";
+    public string SessionHeading => _session.Mode == SessionMode.Gaming ? "TIME TO PLAY" : "TIME TO FOCUS";
+
+    public string StatusText => _session.Snapshot.IsSuspended ? "Paused while Windows is away"
+        : _session.Mode == SessionMode.Gaming ? "Gaming session" : "Work session";
 
     private void OnSnapshotChanged(SessionSnapshot snapshot)
     {
@@ -63,7 +69,9 @@ public sealed class MainViewModel : ObservableObject
         RaisePropertyChanged(nameof(VoluntaryRestVisibility));
         RaisePropertyChanged(nameof(RemainingText));
         RaisePropertyChanged(nameof(StatusText));
+        RaisePropertyChanged(nameof(SessionHeading));
         StartWorkingCommand.RaiseCanExecuteChanged();
+        StartGamingCommand.RaiseCanExecuteChanged();
         RestingNowCommand.RaiseCanExecuteChanged();
         RestedCommand.RaiseCanExecuteChanged();
     }

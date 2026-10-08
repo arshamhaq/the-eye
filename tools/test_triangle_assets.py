@@ -41,6 +41,13 @@ class TriangleArtworkTests(unittest.TestCase):
             insert = np.array(rest.crop((1250, 70, 2162, 1190)))
         np.testing.assert_array_equal(source, insert)
 
+    def test_gaming_landscape_is_the_clean_supplied_image_unchanged(self):
+        self.assertEqual((ASSETS / 'gaming-rest.png').read_bytes(),
+                         (ORIGINALS / 'triangle-gaming-landscape.png').read_bytes())
+        with Image.open(ASSETS / 'gaming-rest.png') as rest:
+            self.assertEqual(rest.size, (1280, 720))
+            self.assertEqual(rest.convert('RGBA').getchannel('A').getextrema(), (255, 255))
+
     def test_white_composite_matches_supplied_standing_art(self):
         with Image.open(ASSETS / 'float.png') as sprite:
             white = Image.new('RGBA', sprite.size, 'white')

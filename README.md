@@ -16,6 +16,16 @@ Right-click the running taskbar icon to pin it.
   default speed and respects the animation-speed slider.
 - At one minute remaining it returns with a live 01:00 to 00:01 countdown;
   at zero the rest screen replaces it. It stays hidden between these reminders.
+- Start Gaming begins the same 20-minute session. It skips the five-minute
+  pass and one-minute warning, then shows a stationary companion with a
+  00:30 to 00:01 countdown in a compact, click-through window. There are no
+  movement, bobbing or fading animations; only the digits change each second.
+  The 30-second gaming reminder is independent of the work reminder toggles.
+  Start Gaming is also available in the tray menu before a session starts.
+- Gaming breaks use the supplied purple/blue gaming artwork with light text.
+  The rest minimum and three weekly emergency tickets are shared by both modes.
+  Rested begins another full session in the selected mode, which also survives
+  recovery after an interrupted process. Settings changes retain that mode.
 - Preview on taskbar, in Settings or the main window, runs the actual desktop
   animation for 25 seconds without changing the session.
 - Resting Now minimizes the main window and opens the supplied meditation pose
@@ -71,6 +81,9 @@ background. Rest uses a 2240 x 1260 landscape containing every original
 meditation pixel unchanged, with the cloud background extended for the text.
 Rest fills physical monitor bounds (including 1920 x 1080 at 125% Windows DPI).
 Display scaling never changes the saved source images.
+Gaming uses the user's clean 1280 x 720 landscape attachment unchanged, already
+in the same 16:9 ratio. WPF scales it to the display; no generated extension or
+resampling is saved into the source asset.
 
 Buttons and the main window have matching golden glows. The outer glow uses
 its own backing shape so image/text rendering stays sharp. Custom titlebar
@@ -96,13 +109,29 @@ NumPy required). Rebuild artwork with `python tools/compose_triangle.py`
 (also requires OpenCV and SciPy). The supplied originals are never overwritten.
 
 - `--dev-timers`: 30-second work and 10-second rest.
+  Gaming shows its stationary countdown immediately for this short session.
 - `--preview`: immediate taskbar preview.
 - `--verify-ui=<absolute-directory>`: exercise actual WPF windows, save captures
   and a results file. Checks Settings Save/Cancel, published assets, actual
-  movement, rest minimization, locked-button rejection and unlocking. It saves
-  the current settings unchanged.
-  Ticket tests use an isolated temporary ledger and never spend real tickets.
-  Verification/capture overrides are ignored while a real commitment is active.
+  movement, rest minimization, locked-button rejection and unlocking, plus both
+  modes' warning boundaries, gaming's stationary overlay and gaming rest artwork.
+  Verification uses temporary settings and a temporary ticket ledger; it never
+  updates Windows startup registration or opens the real ledger. It can run
+  beside a normal instance, including an active commitment. Other diagnostic
+  overrides in normal launches are ignored during a real commitment.
+
+To publish a separate build for manual testing while retaining the installed
+build: `powershell -File tools/publish.ps1 -OutputDirectory artifacts/TheEye-gaming-test`.
+Exit the existing idle instance from its tray menu before opening the test build.
+Normal launches share the real settings and weekly ticket ledger; UI verification
+alone uses isolated data. Actual game FPS and fullscreen overlay visibility need
+checking in the games/display modes you use.
+
+For manual regression checks, try both start buttons, gaming's hidden
+five-minute/one-minute boundaries, the stationary final 30 seconds, the gaming
+break image and its text, and Rested continuing the selected mode. Compare FPS
+before and during the countdown in your usual game. Keep the default timers for
+the full 20-minute check; `--dev-timers` is only a quick 30-second/10-second pass.
 
 ## Architecture
 
