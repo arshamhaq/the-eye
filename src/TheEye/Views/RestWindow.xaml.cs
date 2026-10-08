@@ -62,13 +62,22 @@ public partial class RestWindow : Window
     private void Dodge(System.Windows.Point pointer)
     {
         if (!_locked || !_placed) return;
-        var maxX = Math.Max(20, ActualWidth - RestedButton.Width - 30);
-        var maxY = Math.Max(20, ActualHeight - RestedButton.Height - 30);
-        var candidates = new[] { new System.Windows.Point(30,30), new System.Windows.Point(maxX,30),
-            new System.Windows.Point(30,maxY), new System.Windows.Point(maxX,maxY), new System.Windows.Point(maxX/2,maxY/2) };
-        var destination = candidates.OrderByDescending(p => (p + new Vector(90, 26) - pointer).LengthSquared).First();
-        Canvas.SetLeft(RestedButton, destination.X);
-        Canvas.SetTop(RestedButton, destination.Y);
+        UpdateLayout();
+        PlacementRectangle BoundsOf(FrameworkElement element)
+        {
+            // The text is inside a scaled Viewbox. Translate the rendered
+            // bounds into the Canvas coordinates, rather than using XAML sizes.
+            var bounds = element.TransformToVisual(ButtonLayer).TransformBounds(new Rect(element.RenderSize));
+            return new PlacementRectangle(bounds.X, bounds.Y, bounds.Width, bounds.Height);
+        }
+        var destination = RestButtonPlacement.FindDestination(ButtonLayer.ActualWidth, ButtonLayer.ActualHeight,
+            RestedButton.ActualWidth, RestedButton.ActualHeight,
+            [BoundsOf(RestTextPanel), BoundsOf(EmergencyTicketButton)],
+            new PlacementPoint(pointer.X, pointer.Y),
+            new PlacementPoint(Canvas.GetLeft(RestedButton), Canvas.GetTop(RestedButton)));
+        if (destination is not { } position) return;
+        Canvas.SetLeft(RestedButton, position.X);
+        Canvas.SetTop(RestedButton, position.Y);
     }
     private void Window_PreviewMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
     {

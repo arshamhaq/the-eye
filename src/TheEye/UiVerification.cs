@@ -20,6 +20,52 @@ public partial class App
             if (!condition) throw new InvalidOperationException(message);
             results.Add("PASS " + message);
         }
+        void CheckRestButtonDodges(RestWindow window, string mode)
+        {
+            window.UpdateLayout();
+            var button = (Button)window.FindName("RestedButton");
+            var canvas = (Canvas)window.FindName("ButtonLayer");
+            var text = (FrameworkElement)window.FindName("RestTextPanel");
+            var ticket = (Button)window.FindName("EmergencyTicketButton");
+            Rect Bounds(FrameworkElement element) => element.TransformToVisual(canvas).TransformBounds(new Rect(element.RenderSize));
+            var protectedText = Bounds(text);
+            var protectedTicket = Bounds(ticket);
+            protectedText.Inflate(32, 32);
+            protectedTicket.Inflate(32, 32);
+            var allowed = new Rect(24, 24, canvas.ActualWidth - 48, canvas.ActualHeight - 48);
+            var positions = new HashSet<System.Windows.Point>();
+            for (var attempt = 0; attempt < 200; attempt++)
+            {
+                var previous = new Rect(Canvas.GetLeft(button), Canvas.GetTop(button), button.ActualWidth, button.ActualHeight);
+                if (attempt % 3 == 0)
+                {
+                    // Exercise the real hover handler.
+                    button.RaiseEvent(new System.Windows.Input.MouseEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0)
+                        { RoutedEvent = System.Windows.Input.Mouse.MouseEnterEvent });
+                }
+                else if (attempt % 3 == 1)
+                {
+                    var click = new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0,
+                        System.Windows.Input.MouseButton.Left) { RoutedEvent = UIElement.PreviewMouseDownEvent };
+                    button.RaiseEvent(click);
+                    if (!click.Handled) throw new InvalidOperationException("Locked pointer input was not rejected.");
+                }
+                else button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                var next = new Rect(Canvas.GetLeft(button), Canvas.GetTop(button), button.ActualWidth, button.ActualHeight);
+                previous.Inflate(16, 16);
+                var pointer = System.Windows.Input.Mouse.GetPosition(canvas);
+                var pointerArea = new Rect(pointer.X - 72, pointer.Y - 72, 144, 144);
+                if (!allowed.Contains(next) || next.IntersectsWith(protectedText) || next.IntersectsWith(protectedTicket) ||
+                    next.IntersectsWith(pointerArea) || next.IntersectsWith(previous))
+                    throw new InvalidOperationException($"Unsafe {mode} rest button destination: {next}");
+                positions.Add(next.TopLeft);
+            }
+            Check(positions.Count == 200, $"{mode}: 200 hover/click attempts produce distinct safe random positions");
+            Check(positions.Select(p => (int)(p.X / (canvas.ActualWidth / 6))).Distinct().Count() >= 4 &&
+                positions.Select(p => (int)(p.Y / (canvas.ActualHeight / 6))).Distinct().Count() >= 4,
+                $"{mode}: dodges span screen rows and columns rather than alternating corners");
+            Check(_session!.State == SessionState.MandatoryRestLocked, $"{mode}: repeated hover and click attempts never bypass rest");
+        }
         try
         {
             // Exercise the actual UI with a controllable clock, including the
@@ -125,6 +171,7 @@ public partial class App
             var restCapture = new BitmapImage(new Uri(Path.Combine(directory, "rest.png")));
             var restScreen = System.Windows.Forms.Screen.FromHandle(new System.Windows.Interop.WindowInteropHelper(_restWindow).Handle);
             Check(restCapture.PixelWidth == restScreen.Bounds.Width && restCapture.PixelHeight == restScreen.Bounds.Height, "Rest render matches physical display resolution at current Windows DPI");
+            CheckRestButtonDodges(_restWindow, "Working");
             manualClock.MonotonicNow += _session.Options.MandatoryRestDuration - TimeSpan.FromSeconds(1);
             _session.Tick();
             Check(!_session.CompleteRest(), "Manual rest stays locked until the final second");
@@ -279,10 +326,18 @@ public partial class App
             Check(gamingRestCapture.PixelWidth == restScreen.Bounds.Width && gamingRestCapture.PixelHeight == restScreen.Bounds.Height,
                 "Gaming rest covers the full physical monitor at the current Windows DPI");
             var gamingRestButton = (Button)_restWindow.FindName("RestedButton");
+            CheckRestButtonDodges(_restWindow, "Gaming");
             gamingRestButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Check(_session.State == SessionState.MandatoryRestLocked, "Gaming Rested button cannot skip the minimum");
             gamingClock.MonotonicNow += TimeSpan.FromMinutes(2);
             _session.Tick();
+            var unlockedPosition = new System.Windows.Point(Canvas.GetLeft(gamingRestButton), Canvas.GetTop(gamingRestButton));
+            gamingRestButton.RaiseEvent(new System.Windows.Input.MouseEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0)
+                { RoutedEvent = System.Windows.Input.Mouse.MouseEnterEvent });
+            Check(unlockedPosition == new System.Windows.Point(Canvas.GetLeft(gamingRestButton), Canvas.GetTop(gamingRestButton)) &&
+                Math.Abs(unlockedPosition.X - _restWindow.ActualWidth * .12) < 1 &&
+                Math.Abs(unlockedPosition.Y - _restWindow.ActualHeight * .8) < 1,
+                "Unlocked Rested returns to its normal position and stays still on hover");
             gamingRestButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Check(_restWindow is null && _session.Mode == SessionMode.Gaming && _session.State == SessionState.Working &&
                 _session.Snapshot.Remaining == TimeSpan.FromMinutes(20) && !_overlay.IsVisible,

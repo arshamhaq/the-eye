@@ -32,7 +32,7 @@
   <Image x:Name="PetImage" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality"/>
   <Viewbox Stretch="Uniform" IsHitTestVisible="False">
    <Grid Width="1920" Height="1080">
-    <StackPanel Width="720" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="140,0,0,60">
+    <StackPanel x:Name="RestTextPanel" Width="720" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="140,0,0,60">
      <TextBlock x:Name="EyebrowText" Text="THE EYE / A MOMENT AWAY" FontSize="21" Foreground="#777762"/>
      <TextBlock x:Name="HeadingText" Text="Look a little further." FontSize="70" FontWeight="SemiBold" Foreground="#25281C" Margin="0,32,0,16"/>
      <TextBlock x:Name="DescriptionText" Text="Relax your eyes. Stretch. Let your thoughts wander." FontSize="25" TextWrapping="Wrap" Foreground="#6C705B"/>

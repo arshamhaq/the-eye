@@ -40,6 +40,9 @@ Right-click the running taskbar icon to pin it.
   break (when strict mode is enabled); it cannot be completed early.
 - At the work deadline, mandatory rest begins. For two minutes the visible
   Rested button dodges the pointer and rejects clicks, touch and keyboard input.
+  Each dodge picks a random safe position across the screen, keeping the entire
+  button clear of the text, emergency-ticket button, pointer and previous position.
+  These exclusions follow the rendered layout and Windows display scaling.
   The session state also rejects early completion. After the minimum, it settles
   and clicking it starts a fresh full session.
 - Closing the main window hides it to the tray. Before starting work, tray Exit
