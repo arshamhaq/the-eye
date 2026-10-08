@@ -7,6 +7,11 @@ Right-click the running taskbar icon to pin it.
 
 ![Main window](docs/screenshots/current-main.png)
 ![Rest screen](docs/screenshots/current-rest.png)
+![Gaming mode rest screen](docs/screenshots/current-gaming-rest.png)
+
+The work-mode companion floats above other windows near the taskbar. This desktop capture shows its countdown over a sample notes window, with the background visible around the character:
+
+![Transparent floating companion with 59 seconds remaining, above a sample notes window and the Windows taskbar](docs/screenshots/current-companion-countdown.png)
 
 ## Use
 
