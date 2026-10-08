@@ -15,6 +15,8 @@ public sealed class MainViewModel : ObservableObject
         CompanionImage = companionImage;
         StartWorkingCommand = new RelayCommand(() => _session.StartWorking(), () => IsIdle);
         StartGamingCommand = new RelayCommand(() => _session.StartGaming(), () => IsIdle);
+        SwitchModeCommand = new RelayCommand(() => _session.SwitchMode(
+            _session.Mode == SessionMode.Gaming ? SessionMode.Working : SessionMode.Gaming), () => IsWorking);
         RestingNowCommand = new RelayCommand(() => _session.BeginVoluntaryRest(), () => IsWorking);
         RestedCommand = new RelayCommand(() => _session.CompleteRest(), () => CanCompleteRest);
         OpenSettingsCommand = new RelayCommand(() => App.CurrentApp.OpenSettings());
@@ -28,6 +30,10 @@ public sealed class MainViewModel : ObservableObject
     public RelayCommand StartWorkingCommand { get; }
 
     public RelayCommand StartGamingCommand { get; }
+
+    public RelayCommand SwitchModeCommand { get; }
+
+    public string SwitchModeText => _session.Mode == SessionMode.Gaming ? "Switch to Work Mode" : "Switch to Game Mode";
 
     public RelayCommand RestingNowCommand { get; }
 
@@ -70,8 +76,10 @@ public sealed class MainViewModel : ObservableObject
         RaisePropertyChanged(nameof(RemainingText));
         RaisePropertyChanged(nameof(StatusText));
         RaisePropertyChanged(nameof(SessionHeading));
+        RaisePropertyChanged(nameof(SwitchModeText));
         StartWorkingCommand.RaiseCanExecuteChanged();
         StartGamingCommand.RaiseCanExecuteChanged();
+        SwitchModeCommand.RaiseCanExecuteChanged();
         RestingNowCommand.RaiseCanExecuteChanged();
         RestedCommand.RaiseCanExecuteChanged();
     }

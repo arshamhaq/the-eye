@@ -45,6 +45,25 @@ public sealed class SessionManager
 
     public bool StartGaming() => StartSession(SessionMode.Gaming);
 
+    public bool SwitchMode(SessionMode mode)
+    {
+        if (!Enum.IsDefined(mode)) throw new ArgumentOutOfRangeException(nameof(mode));
+        if (State != SessionState.Working) return false;
+        // A click at the deadline must not postpone the mandatory break.
+        if (!_isSuspended && RemainingUntilDeadline() <= TimeSpan.Zero)
+        {
+            EnterMandatoryRest();
+            return false;
+        }
+        if (Mode == mode) return false;
+        Mode = mode;
+        // Clear the old presentation before raising any newly due warning.
+        // Keep each mode's flags so switching back cannot replay old warnings.
+        PublishSnapshot();
+        if (!_isSuspended) TickWorking();
+        return true;
+    }
+
     private bool StartSession(SessionMode mode)
     {
         if (State is not (SessionState.Idle or SessionState.VoluntaryRest or SessionState.MandatoryRestComplete))

@@ -34,6 +34,7 @@ public partial class App : System.Windows.Application
     private SessionManager? _session;
     private Mutex? _singleInstanceMutex;
     private SessionState _lastLoggedState = SessionState.Idle;
+    private SessionMode _lastSnapshotMode = SessionMode.Working;
     private bool _developmentTimers;
 
     public static App CurrentApp => (App)Current;
@@ -319,6 +320,12 @@ public partial class App : System.Windows.Application
     private void OnSnapshotChanged(SessionSnapshot snapshot)
     {
         SaveCommitmentSnapshot(snapshot);
+        if (snapshot.Mode != _lastSnapshotMode)
+        {
+            _lastSnapshotMode = snapshot.Mode;
+            StopPreview();
+            _overlay?.HidePet();
+        }
         var stateChanged = snapshot.State != _lastLoggedState;
         if (stateChanged)
         {

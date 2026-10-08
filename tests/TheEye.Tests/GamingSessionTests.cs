@@ -71,7 +71,7 @@ public sealed class GamingSessionTests
     }
 
     [Fact]
-    public void ModeCannotChangeOrRestartTheTimerDuringAnActiveSession()
+    public void StartButtonsCannotChangeOrRestartTheTimerDuringAnActiveSession()
     {
         var clock = new FakeClock();
         var session = new SessionManager(clock);

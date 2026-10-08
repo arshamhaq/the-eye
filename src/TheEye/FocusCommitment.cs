@@ -13,6 +13,7 @@ public partial class App
     private bool _endingWindowsSession;
     private long _lastCheckpoint;
     private SessionState _checkpointState = SessionState.Idle;
+    private SessionMode _checkpointMode = SessionMode.Working;
     private bool _checkpointSuspended;
     private string? _guardFailure;
     private bool _checkpointErrorReported;
@@ -68,13 +69,14 @@ public partial class App
     {
         if (_endingWindowsSession || IsExiting || _focusGuard is null || snapshot.State == SessionState.Idle) return;
         var uptime = Environment.TickCount64;
-        if (snapshot.State == _checkpointState && snapshot.IsSuspended == _checkpointSuspended &&
+        if (snapshot.State == _checkpointState && snapshot.Mode == _checkpointMode && snapshot.IsSuspended == _checkpointSuspended &&
             uptime - _lastCheckpoint < 5000) return;
         try
         {
             _focusGuard.Checkpoint(snapshot, _session!.Options);
             _lastCheckpoint = uptime;
             _checkpointState = snapshot.State;
+            _checkpointMode = snapshot.Mode;
             _checkpointSuspended = snapshot.IsSuspended;
             _checkpointErrorReported = false;
         }

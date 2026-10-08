@@ -290,6 +290,54 @@ public partial class App
             _session.BeginVoluntaryRest();
             Check(_restWindow is not null && ReferenceEquals(((System.Windows.Controls.Image)_restWindow.FindName("PetImage")).Source,
                 _petService.LoadFrame(_pet, "gaming-rest")), "Early gaming breaks also use the gaming artwork");
+            gamingClock.MonotonicNow += TimeSpan.FromMinutes(2);
+            _session.Tick();
+            _session.CompleteRest();
+            ShowMainWindow();
+            var switchButton = (Button)_mainWindow.FindName("SwitchModeButton");
+            Check(switchButton.IsVisible && switchButton.Content.ToString() == "Switch to Work Mode", "Gaming exposes a clearly labeled switch to work button");
+            var switchStart = gamingClock.MonotonicNow;
+            var ticketsBeforeSwitch = _focusGuard.TicketsRemaining;
+            gamingClock.MonotonicNow += TimeSpan.FromMinutes(15);
+            _session.Tick();
+            switchButton.Command!.Execute(null);
+            Check(_session.Mode == SessionMode.Working && _session.Snapshot.Remaining == TimeSpan.FromMinutes(5) &&
+                switchButton.Content.ToString() == "Switch to Game Mode", "Switch button changes mode and label without restarting time");
+            Check(_overlay!.IsVisible && ((TranslateTransform)((System.Windows.Controls.Image)_overlay.FindName("PetImage")).RenderTransform).HasAnimatedProperties,
+                "Switching to work in the five-minute window starts its floating warning");
+            Check(_focusGuard.Recovery!.Snapshot.Mode == SessionMode.Working, "Mode switch is checkpointed immediately, within the five-second throttle");
+            switchButton.Command.Execute(null);
+            Check(!_overlay.IsVisible && _session.Mode == SessionMode.Gaming && _previewOverlay is null,
+                "Switching to gaming immediately stops and hides a floating warning");
+            Check(_focusGuard.Recovery!.Snapshot.Mode == SessionMode.Gaming && _focusGuard.TicketsRemaining == ticketsBeforeSwitch,
+                "Switching back immediately persists gaming without spending or replenishing tickets");
+            switchButton.Command.Execute(null);
+            Check(!_overlay.IsVisible, "Switching back to work does not replay the old five-minute pass");
+            gamingClock.MonotonicNow = switchStart + TimeSpan.FromMinutes(19);
+            _session.Tick();
+            Check(_overlay.IsVisible, "Work countdown still begins at one minute after a mode switch");
+            switchButton.Command.Execute(null);
+            Check(!_overlay.IsVisible, "Switching at one minute hides work countdown until gaming's last thirty seconds");
+            gamingClock.MonotonicNow += TimeSpan.FromSeconds(30);
+            _session.Tick();
+            Check(_overlay.IsVisible && !((TranslateTransform)((System.Windows.Controls.Image)_overlay.FindName("PetImage")).RenderTransform).HasAnimatedProperties,
+                "Switched gaming session starts its stationary countdown at thirty seconds");
+            switchButton.Command.Execute(null);
+            Check(_overlay.IsVisible && ((TranslateTransform)((System.Windows.Controls.Image)_overlay.FindName("PetImage")).RenderTransform).HasAnimatedProperties && _overlay.Width > 400,
+                "Switching to work converts an active stationary countdown to the normal animated overlay");
+            switchButton.Command.Execute(null);
+            Check(_overlay.IsVisible && !((TranslateTransform)((System.Windows.Controls.Image)_overlay.FindName("PetImage")).RenderTransform).HasAnimatedProperties && _overlay.Width < 400,
+                "Switching back converts the active countdown to a compact stationary overlay");
+            OpenAnimationPreview();
+            switchButton.Command.Execute(null);
+            Check(_previewOverlay is null, "Switching modes closes any preview using the previous mode");
+            Capture(_mainWindow, Path.Combine(directory, "mode-switch.png"));
+            gamingClock.MonotonicNow += TimeSpan.FromSeconds(30);
+            _session.Tick();
+            Check(_session.State == SessionState.MandatoryRestLocked && !switchButton.Command.CanExecute(null),
+                "Switching never delays the original break deadline, and is disabled during rest");
+            Check(ReferenceEquals(((System.Windows.Controls.Image)_restWindow!.FindName("PetImage")).Source,
+                _petService.LoadFrame(_pet, "resting")), "Next break uses the final selected work mode's background");
             _session.Stop();
             Check(_verificationMode, "UI verification uses an isolated ledger, never the user's tickets");
             _session!.Stop();

@@ -26,6 +26,12 @@ Right-click the running taskbar icon to pin it.
   The rest minimum and three weekly emergency tickets are shared by both modes.
   Rested begins another full session in the selected mode, which also survives
   recovery after an interrupted process. Settings changes retain that mode.
+- During a session, Switch to Work Mode / Switch to Game Mode changes the
+  reminders and next break artwork immediately, without restarting the timer
+  or spending a ticket. The selection is checkpointed immediately. Switching
+  to gaming stops any floating warning; its countdown appears only in the last
+  30 seconds. Switching back does not replay a warning already shown. Mode
+  switching is unavailable during rest and cannot bypass an overdue break.
 - Preview on taskbar, in Settings or the main window, runs the actual desktop
   animation for 25 seconds without changing the session.
 - Resting Now minimizes the main window and opens the supplied meditation pose
