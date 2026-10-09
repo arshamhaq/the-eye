@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Test
+        run: dotnet test TheEye.sln --configuration Release
+
+      - name: Publish portable app
+        shell: pwsh
+        run: ./tools/publish.ps1
+
+      - name: Package release
+        shell: pwsh
+        run: |
+          $archive = "artifacts/TheEye-win-x64.zip"
+          Compress-Archive -Path "artifacts/TheEye-win-x64" -DestinationPath $archive
+          $hash = (Get-FileHash -Algorithm SHA256 -Path $archive).Hash.ToLowerInvariant()
+          "$hash  TheEye-win-x64.zip" | Set-Content -Encoding ascii "artifacts/TheEye-win-x64.zip.sha256"
+
+      - name: Create GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" `
+            "artifacts/TheEye-win-x64.zip" `
+            "artifacts/TheEye-win-x64.zip.sha256" `
+            --verify-tag `
+            --generate-notes `
+            --title "TheEye ${{ github.ref_name }}"

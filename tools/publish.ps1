@@ -2,7 +2,7 @@ param([string]$Dotnet = "dotnet", [string]$OutputDirectory = "")
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $output = if ($OutputDirectory) { [IO.Path]::GetFullPath($OutputDirectory) } else { Join-Path $root 'artifacts\TheEye-win-x64' }
-& $Dotnet publish (Join-Path $root 'src\TheEye\TheEye.csproj') -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -o $output
+& $Dotnet publish (Join-Path $root 'src\TheEye\TheEye.csproj') -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -o $output
 if ($LASTEXITCODE -ne 0) { throw 'Publish failed.' }
 Add-Type -AssemblyName System.Drawing
 $petRoot = Join-Path $output 'Pets\Triangle'

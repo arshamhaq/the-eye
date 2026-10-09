@@ -1,9 +1,22 @@
 # TheEye
 
 Native Windows 11 focus/rest timer with a floating triangle companion.
-Double-click `artifacts/TheEye-win-x64/TheEye.exe`; no command or runtime
-installation is needed. Keep the adjacent Assets and Pets folders together.
-Right-click the running taskbar icon to pin it.
+
+## Install and use (no technical setup required)
+
+1. Open the [latest release](https://github.com/arshamhaq/the-eye/releases/latest)
+   and download `TheEye-win-x64.zip` from **Assets**.
+2. Extract the ZIP file, then open the extracted `TheEye-win-x64` folder.
+3. Keep everything in that folder together; do not move `TheEye.exe` away from
+   the `Assets` and `Pets` folders.
+4. Double-click `TheEye.exe` to start. There is no installer and nothing else
+   to install. If Windows SmartScreen appears, choose **More info**, then
+   **Run anyway**.
+5. Choose **Start Working** or **Start Gaming**. The app will time your session
+   and show the rest screen when it is time for a break.
+
+Closing the window keeps the app running in the Windows notification area
+(system tray). Click its icon to reopen it, or right-click it for more options.
 
 ![Main window](docs/screenshots/current-main.png)
 ![Rest screen](docs/screenshots/current-rest.png)
@@ -140,6 +153,10 @@ Exit the existing idle instance from its tray menu before opening the test build
 Normal launches share the real settings and weekly ticket ledger; UI verification
 alone uses isolated data. Actual game FPS and fullscreen overlay visibility need
 checking in the games/display modes you use.
+
+Pushing a tag such as `v1.0.0` runs the GitHub release workflow. It tests the
+solution, builds the portable Windows app, and publishes `TheEye-win-x64.zip`
+with its SHA-256 checksum. Generated files under `artifacts/` remain untracked.
 
 For manual regression checks, try both start buttons, gaming's hidden
 five-minute/one-minute boundaries, the stationary final 30 seconds, the gaming
